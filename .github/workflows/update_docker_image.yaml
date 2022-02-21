@@ -19,5 +19,6 @@ jobs:
       - name: Push to Docker Hub
         uses: docker/build-push-action@v2
         with:
+          context: app/
           push: true
           tags: nikuma0/random_coffe_bot:latest
