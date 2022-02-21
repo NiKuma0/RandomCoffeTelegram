@@ -1,0 +1,6 @@
+__pycache__
+.pytest_cache
+venv
+choice
+bot.log
+bot.db
