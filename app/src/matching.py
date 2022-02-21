@@ -16,6 +16,14 @@ bot = BOT
 match_router = Router()
 
 
+@match_router.callback_query(F.data == 'deactivate_user')
+async def deactivate_user(data: types.CallbackQuery, model_user: User):
+    model_user.is_active = False
+    model_user.save()
+    await data.message.edit_text(
+        'Вас исключили из списка для подбора пар'
+    )
+
 @match_router.callback_query(F.data == 'start_matching')
 async def start_matching(data: types.CallbackQuery, model_user: User):
     if datetime.datetime.now() - model_user.register_date >= datetime.timedelta(weeks=14):
@@ -47,14 +55,16 @@ async def start_matching(data: types.CallbackQuery, model_user: User):
     if not to_user:
         model_user.last_matching_date = datetime.datetime.now()
         return await data.message.edit_text(
-            'Пары не нашлось(\n'
-            'Подожди пока кто нибудь освободиться - это может занять до недели'
+            'К сожалению прямо сейчас сейчас я не смог подобрать тебе пару, '
+            'но как только у меня появится кандидат, сразу тебе напишу.'
         )
     text = lambda user: (
-        'Пара найдена!\n'
-        f'Имя: {user.full_name}\n'
-        f'Телеграмм: @{user.teleg_username}\n'
-        'Поспеши назначить встречу! Через неделю спрашу как прошло)'
+        'Твоя пара на эту неделю:\n'
+        f'{user.full_name}\n'
+        f'{user.profession}\n'
+        f'@{user.teleg_username}\n'
+        'Напиши своей паре приветсвие и предложи удобные дни и время для созвона.'
+        'В разговоре ты можешь опираться на этот гайд (здесь скоро будет ссылка)'
     )
     logger.info(f'New pair {model_user} -> {to_user}')
     await data.message.edit_text(text=text(to_user))
@@ -105,10 +115,14 @@ async def get_feedback(pair: Pair):
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     await BOT.send_message(
         pair.hr.teleg_id,
-        'Прошла ли встреча?',
+        'Удалось ли созвониться?',
         reply_markup=keyboard
     )
 
+
+@match_router.callback_query(F.data == 'match_not_complite')
+async def match_not_complite(data: types.CallbackQuery):
+    await data.message.edit_text('Пожалуйста, напиши в телеграм @ksu_bark, она поможет :)')
 
 @match_router.callback_query(F.data[:15] == 'match_complite_')
 async def match_complite(data: types.CallbackQuery, model_user: User):
@@ -119,13 +133,16 @@ async def match_complite(data: types.CallbackQuery, model_user: User):
     pair.complete = True
     pair.save()
     buttons = [[
-        types.InlineKeyboardButton(text='Да, начнём!', callback_data='start_matching')
+        types.InlineKeyboardButton(text='GO', callback_data='start_matching')
     ]]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     await pair_send_message(
         pair,
-        {'text': 'Отлично! Может ещё раз?', 'reply_markup': keyboard},
-        {'text': 'HR отметил что встреча прошла успешно! Хотите продолжить?',
+        {'text': ('Поделись своими эмоциями в канале communication! '
+        'Если ты захочешь участвовать еще раз, просто нажми на кнопку go'),
+        'reply_markup': keyboard},
+        {'text': ('Спасибо большое за участие! Если тебе хочется '
+        'поучаствовать снова, просто нажми на кнопку go'),
         'reply_markup': keyboard}
     )
 

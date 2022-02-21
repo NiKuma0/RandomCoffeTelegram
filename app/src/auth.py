@@ -28,10 +28,11 @@ async def start(message: types.Message, state: FSMContext, model_user: User | No
         logger.info(f'New user join to us {message.from_user.username}')
         return await state.set_state(Order.waiting_for_password)
     await state.clear()
-    buttons = [[
-        types.InlineKeyboardButton(text='Запустить подбор пар', callback_data='start_matching'),
-        types.InlineKeyboardButton(text='Перезаполнить профиль', callback_data='set_profile')
-    ]]
+    buttons = [
+        [types.InlineKeyboardButton(text='Запустить подбор пар', callback_data='start_matching')],
+        [types.InlineKeyboardButton(text='Перезаполнить профиль', callback_data='set_profile')],
+        [types.InlineKeyboardButton(text='Не хочу пока участвовать', callback_data='deactivate_user')]
+    ]
     await message.answer(
         'Хочешь запустить подбор пар или перезаполнить профиль?',
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -52,15 +53,14 @@ async def check_password(message: types.Message, event_from_user: types.User, st
     logger.info(f'New user ({model_user.teleg_username}, {model_user.teleg_id}) in Data Base')
     text = (
         'Этот бот нужен для проведения random coffe. Наш бот предлагает тебе '
-        'поучаствовать в неформальном разговоре с выпускником Практикума по '
-        'IT-направлению.\nДля этого необходимо нажать на кнопку "Поехали".'
-        'Нажмите как только будете готовы.'
+        'поучаствовать в неформальном разговоре с выпускником Практикума по IT-направлению. '
+        'Для этого необходимо нажать на кнопку "Поехали". Если на этой неделе вы не '
+        'готовы участовать в random coffe, просто нажмите "В следующий раз".'
         if model_user.is_hr else
-        'Этот бот нужен для проведения random coffe. '
-        'Наш бот предлагает тебе поучаствовать в неформальном разговоре '
-        'начинающим IT-рекрутером Практикума\n'
-        'Для этого необходимо нажать на кнопку "Поехали". Нажмите как только '
-        'будете готовы.'
+        'Этот бот нужен для проведения random coffe. Наш бот предлагает тебе '
+        'поучаствовать в неформальном разговоре с начинающим it-рекрутером Практикума. '
+        'Для этого необходимо нажать на кнопку "Поехали". Если на этой неделе вы не '
+        'готовы участовать в random coffe, просто нажмите "В следующий раз".'
     )
     await message.answer(
         text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
