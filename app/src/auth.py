@@ -34,7 +34,7 @@ async def start(message: types.Message, state: FSMContext, model_user: User | No
         [types.InlineKeyboardButton(text='Не хочу пока участвовать', callback_data='deactivate_user')]
     ]
     await message.answer(
-        'Хочешь запустить подбор пар или перезаполнить профиль?',
+        'Это меню. Здесь ты можешь изменить свой профиль, попробовать запусть подбор пар или исключить себя из списка подбора пар.',
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=buttons)
     )
 
