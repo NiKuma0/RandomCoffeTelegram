@@ -16,31 +16,19 @@ bot = BOT
 match_router = Router()
 
 
-@match_router.message(F.text == 'Не хочу больше участвовать')
 @match_router.callback_query(F.data == 'deactivate_user')
 async def deactivate_user(data: types.CallbackQuery | types.Message, model_user: User):
     model_user.is_active = False
     model_user.save()
-    match data:
-        case types.CallbackQuery():
-            await data.message.edit_text(
-                'Вас исключили из списка для подбора пар'
-            )
-        case types.Message():
-            await data.answer(
-                'Вас исключили из списка для подбора пар'
-            )
+    await data.message.edit_text(
+        'Вас исключили из списка для подбора пар.\n'
+        'Вы можете это исправить в меню (вызвать меню можно командой /start)'
+    )
 
 
-@match_router.message(F.text == 'GO')
 @match_router.callback_query(F.data == 'start_matching')
 async def start_matching(data: types.CallbackQuery | types.Message, model_user: User):
-    match data:
-        case types.CallbackQuery():
-            answer = data.message.edit_text
-        case types.Message():
-            answer = data.answer
-    
+    answer = data.message.edit_text
     if datetime.datetime.now() - model_user.register_date >= datetime.timedelta(weeks=14):
         model_user.is_active = False
         model_user.save()
@@ -139,6 +127,7 @@ async def get_feedback(pair: Pair):
 async def match_not_complite(data: types.CallbackQuery):
     await data.message.edit_text('Пожалуйста, напиши в телеграм @ksu_bark, она поможет :)')
 
+
 @match_router.callback_query(F.data[:15] == 'match_complite_')
 async def match_complite(data: types.CallbackQuery, model_user: User):
     await data.message.delete()
@@ -154,10 +143,10 @@ async def match_complite(data: types.CallbackQuery, model_user: User):
     await pair_send_message(
         pair,
         {'text': ('Поделись своими эмоциями в канале communication! '
-        'Если ты захочешь участвовать еще раз, просто нажми на кнопку go'),
+        'Если ты захочешь участвовать еще раз, просто нажми на кнопку GO'),
         'reply_markup': keyboard},
         {'text': ('Спасибо большое за участие! Если тебе хочется '
-        'поучаствовать снова, просто нажми на кнопку go'),
+        'поучаствовать снова, просто нажми на кнопку GO'),
         'reply_markup': keyboard}
     )
 

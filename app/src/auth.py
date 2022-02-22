@@ -1,5 +1,4 @@
 import logging
-from subprocess import call
 
 from aiogram import types, Router, F
 from aiogram.dispatcher.fsm.state import State, StatesGroup
@@ -27,21 +26,12 @@ class Order(StatesGroup):
 
 
 @auth_router.message(commands='start')
-async def start(message: types.Message, state: FSMContext, model_user: User | None):
+async def start(message: types.Message, state: FSMContext, model_user: User | None, answer):
     if model_user is None:
         await message.answer('Введите ваш код:')
         logger.info(f'New user join to us {message.from_user.username}')
         return await state.set_state(Order.waiting_for_password)
-    await state.clear()
-    buttons = [
-        [types.InlineKeyboardButton(text='Запустить подбор пар', callback_data='start_matching')],
-        [types.InlineKeyboardButton(text='Перезаполнить профиль', callback_data='set_profile')],
-        [types.InlineKeyboardButton(text='Не хочу пока участвовать', callback_data='deactivate_user')]
-    ]
-    await message.answer(
-        'Это меню. Здесь ты можешь изменить свой профиль, попробовать запусть подбор пар или исключить себя из списка подбора пар.',
-        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=buttons)
-    )
+    await send_profile(model_user, state, answer)
 
 
 @auth_router.message(state=Order.waiting_for_password)
@@ -59,13 +49,11 @@ async def check_password(message: types.Message, event_from_user: types.User, st
     text = (
         'Этот бот нужен для проведения random coffe. Наш бот предлагает тебе '
         'поучаствовать в неформальном разговоре с выпускником Практикума по IT-направлению. '
-        'Для этого необходимо нажать на кнопку "Поехали". Если на этой неделе вы не '
-        'готовы участовать в random coffe, просто нажмите "В следующий раз".'
+        'Для этого необходимо нажать на кнопку "Поехали". Нажмите как только будете готовы.'
         if model_user.is_hr else
         'Этот бот нужен для проведения random coffe. Наш бот предлагает тебе '
         'поучаствовать в неформальном разговоре с начинающим it-рекрутером Практикума. '
-        'Для этого необходимо нажать на кнопку "Поехали". Если на этой неделе вы не '
-        'готовы участовать в random coffe, просто нажмите "В следующий раз".'
+        'Для этого необходимо нажать на кнопку "Поехали". Нажмите как только будете готовы.'
     )
     await message.answer(
         text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
@@ -75,17 +63,11 @@ async def check_password(message: types.Message, event_from_user: types.User, st
 
 
 @auth_router.callback_query(F.data == 'set_profile')
-async def ack_about_change_name(data: types.CallbackQuery|types.Message, model_user: User, state: FSMContext):
+async def ack_about_change_name(data, model_user: User, state: FSMContext, answer):
     buttons = [[
         types.InlineKeyboardButton(text='Да', callback_data='yes'),
         types.InlineKeyboardButton(text='Нет', callback_data='not')
     ]]
-    if isinstance(data, types.CallbackQuery):
-        answer = data.message.edit_text
-    elif isinstance(data, types.Message):
-        answer = data.answer
-    else:
-        raise f'Don`t supporeted type of data {type(data).__name__}'
     await state.set_state(Order.waiting_for_real_name)
     await answer(
         f'Это ваше настоящее имя: {model_user.full_name}?',
@@ -94,23 +76,23 @@ async def ack_about_change_name(data: types.CallbackQuery|types.Message, model_u
 
 
 @auth_router.callback_query(state=Order.waiting_for_real_name)
-async def answer_about_change_name(data: types.CallbackQuery, state: FSMContext, model_user: User):
+async def answer_about_change_name(data: types.CallbackQuery, state: FSMContext, model_user: User, answer):
     if data.data == 'not':
         return await data.message.edit_text('Напишете своё настоящее имя')
     elif data.data != 'yes':
         return logger.error(f'Unknown data: {data.data}')
-    await change_name(data, state, model_user)
+    await change_name(data, state, model_user, answer)
 
 
 @auth_router.message(state=Order.waiting_for_real_name)
-async def change_name(message: types.Message | types.CallbackQuery, state: FSMContext, model_user: User):
+async def change_name(message, state: FSMContext, model_user: User, answer):
     if isinstance(message, types.Message):
         model_user.full_name = message.text
         model_user.save()
-    if not (model_user.is_admin or model_user.is_hr):
-        await state.set_state(Order.set_profession)
-        return await get_professions(message, check_data=False)
-    await send_profile(model_user, message, state)
+    if model_user.is_admin or model_user.is_hr:
+        return await send_profile(model_user, state, answer)
+    await state.set_state(Order.set_profession)
+    await get_professions(message, check_data=False)
  
 
 @auth_router.callback_query(F.data[:5] == 'page_')
@@ -131,11 +113,11 @@ async def get_professions(data: types.CallbackQuery | types.Message, check_data=
 
 
 @auth_router.callback_query(F.data[:11] == 'profession_', state=Order.set_profession)
-async def set_profession(data: types.CallbackQuery, model_user: User, state):
+async def set_profession(data: types.CallbackQuery, model_user: User, state, answer):
     profession_pk = int(data.data[11:])
     model_user.profession = profession_pk
     model_user.save()
-    await send_profile(model_user, data, state)
+    await send_profile(model_user, state, answer)
 
 
 async def profession_paginator(page=None) -> types.InlineKeyboardMarkup:
@@ -159,20 +141,27 @@ async def profession_paginator(page=None) -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-async def send_profile(model_user: User, data: types.Message | types.CallbackQuery, state: FSMContext):
+async def send_profile(model_user: User, state: FSMContext, answer):
     '''
     Send profile and clear state
     '''
     await state.clear()
-    text = (
-        'Твой профиль:\n'
+    buttons = [
+        [types.InlineKeyboardButton(text='Не хочу пока участвовать', callback_data='deactivate_user')]
+        if model_user.is_active else
+        [types.InlineKeyboardButton(text='GO', callback_data='start_matching')],
+        [types.InlineKeyboardButton(text='Перезаполнить профиль', callback_data='set_profile')],
+    ]
+    await answer(
+        'Вызвать это меню можно командой /start\n'
+        'Ваш профиль:\n'
         f'Имя: {model_user.full_name}\n'
         f'Профессия: {model_user.profession}\n'
-        f'Телеграм: @{model_user.teleg_username}\n'
+        f'Телеграм: @{model_user.teleg_username}\n' +
+        (
+        'Если пока не хотите участвовать нажмите на кнопку ниже'
+        if model_user.is_active else
         'Если вы готовы начать нажмите "GO"'
+        ),
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=buttons)
     )
-    if isinstance(data, types.CallbackQuery):
-        return await data.message.answer(text, reply_markup=menu)
-    if isinstance(data, types.Message):
-        return await data.answer(text, reply_markup=menu)
-    return logger.error(f'Don`t supported type of data: "{type(data).__name__}"') 
