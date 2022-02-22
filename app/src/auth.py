@@ -12,6 +12,11 @@ HR_PASSWORD = 'hr_hire'
 STUDENT_PASSWORD = 'student_hire'
 logger = logging.getLogger(__name__)
 auth_router = Router()
+menu = types.ReplyKeyboardMarkup(keyboard=[
+    [types.KeyboardButton(text='GO')],
+    [types.KeyboardButton(text='Перезаполнить профиль'),
+    types.KeyboardButton(text='Не хочу больше участвовать')]
+])
 
 
 class Order(StatesGroup):
@@ -164,14 +169,10 @@ async def send_profile(model_user: User, data: types.Message | types.CallbackQue
         f'Имя: {model_user.full_name}\n'
         f'Профессия: {model_user.profession}\n'
         f'Телеграм: @{model_user.teleg_username}\n'
-        'Готовы начать?'
+        'Если вы готовы начать нажмите "GO"'
     )
-    buttons = [[
-        types.InlineKeyboardButton(text='Да, Начнём!', callback_data='start_matching'),
-    ]]
-    keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     if isinstance(data, types.CallbackQuery):
-        return await data.message.edit_text(text, reply_markup=keyboard)
+        return await data.message.answer(text, reply_markup=menu)
     if isinstance(data, types.Message):
-        return await data.answer(text, reply_markup=keyboard)
+        return await data.answer(text, reply_markup=menu)
     return logger.error(f'Don`t supported type of data: "{type(data).__name__}"') 

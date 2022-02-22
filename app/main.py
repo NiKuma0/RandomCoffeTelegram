@@ -22,7 +22,7 @@ logger = logging.getLogger()
 
 async def main():
     logger.info('RUN APP')
-    # create_tables()
+    create_tables()
     logger.info('Created tables')
     register_middlewares()
     DP.include_router(auth_router)

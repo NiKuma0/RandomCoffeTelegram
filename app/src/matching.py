@@ -16,16 +16,31 @@ bot = BOT
 match_router = Router()
 
 
+@match_router.message(F.text == 'Не хочу больше участвовать')
 @match_router.callback_query(F.data == 'deactivate_user')
-async def deactivate_user(data: types.CallbackQuery, model_user: User):
+async def deactivate_user(data: types.CallbackQuery | types.Message, model_user: User):
     model_user.is_active = False
     model_user.save()
-    await data.message.edit_text(
-        'Вас исключили из списка для подбора пар'
-    )
+    match data:
+        case types.CallbackQuery():
+            await data.message.edit_text(
+                'Вас исключили из списка для подбора пар'
+            )
+        case types.Message():
+            await data.answer(
+                'Вас исключили из списка для подбора пар'
+            )
 
+
+@match_router.message(F.text == 'GO')
 @match_router.callback_query(F.data == 'start_matching')
-async def start_matching(data: types.CallbackQuery, model_user: User):
+async def start_matching(data: types.CallbackQuery | types.Message, model_user: User):
+    match data:
+        case types.CallbackQuery():
+            answer = data.message.edit_text
+        case types.Message():
+            answer = data.answer
+    
     if datetime.datetime.now() - model_user.register_date >= datetime.timedelta(weeks=14):
         model_user.is_active = False
         model_user.save()
@@ -35,7 +50,7 @@ async def start_matching(data: types.CallbackQuery, model_user: User):
             Pair.respondent == model_user
         ).execute()
         logger.info(f'@{model_user.teleg_username} has blocked')
-        return await data.message.edit_text(
+        return await answer(
             'Ваш профиль заблокирован т.к. срок жизни аккаунта 3 месяца.'
         )
     non_complite_date = model_user.pairs.where(
@@ -45,7 +60,7 @@ async def start_matching(data: types.CallbackQuery, model_user: User):
     if non_complite_date.exists():
         pair: Pair= non_complite_date.first()
         to_user = pair.respondent if model_user.is_hr else pair.hr
-        return await data.message.edit_text(
+        return await answer(
             f'У вас уже есть не законченная встреча c @{to_user.teleg_username}!'
         )
     model_user.is_active = True
@@ -54,7 +69,7 @@ async def start_matching(data: types.CallbackQuery, model_user: User):
     to_user = await get_match(model_user)
     if not to_user:
         model_user.last_matching_date = datetime.datetime.now()
-        return await data.message.edit_text(
+        return await answer(
             'К сожалению прямо сейчас сейчас я не смог подобрать тебе пару, '
             'но как только у меня появится кандидат, сразу тебе напишу.'
         )
@@ -67,7 +82,7 @@ async def start_matching(data: types.CallbackQuery, model_user: User):
         'В разговоре ты можешь опираться на этот гайд (здесь скоро будет ссылка)'
     )
     logger.info(f'New pair {model_user} -> {to_user}')
-    await data.message.edit_text(text=text(to_user))
+    await answer(text=text(to_user))
     await BOT.send_message(
         to_user.teleg_id,
         text(model_user)
