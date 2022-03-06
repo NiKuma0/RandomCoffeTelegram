@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.dispatcher.fsm.storage.memory import MemoryStorage
 
 
-TESTING = True
+TESTING = False
 # DB settings
 POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
 POSTGRES_USER = os.getenv('POSTGRES_USER')
