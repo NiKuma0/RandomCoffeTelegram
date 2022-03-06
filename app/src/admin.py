@@ -11,6 +11,7 @@ types.InputMessageContent
 admin_router = Router()
 logger = logging.getLogger(__name__)
 
+
 class AdminFilter(BaseFilter):
     async def __call__(self, message: types.Message, model_user):
         if not model_user or not model_user.is_admin:
@@ -79,7 +80,7 @@ async def admin_ask_pairs(message):
 
 @admin_router.message(commands='ask_pair')
 async def admin_ask_pair(message: types.Message, command: command.CommandObject):
-    if not command.args or len(args := command.args.split) != 2:
+    if not command.args or len(args := command.args.split()) != 2:
         return await message.answer(
             'Комманда принимает только 2 аргумента.\n'
             '   /ask_pair [hr] [респондент]  # Порядок важен!'

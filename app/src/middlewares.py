@@ -1,4 +1,3 @@
-from pprint import pprint
 from aiogram import types
 
 from db.models import User
@@ -22,6 +21,7 @@ async def send_message(id):
     async def wrapper(*args, **kwargs):
         return BOT.send_message(id, *args, **kwargs)
     return wrapper
+
 
 async def get_answer_func(handler, event: types.Update, data):
     match (update := event.event):

@@ -11,11 +11,6 @@ HR_PASSWORD = 'hr_hire'
 STUDENT_PASSWORD = 'student_hire'
 logger = logging.getLogger(__name__)
 auth_router = Router()
-menu = types.ReplyKeyboardMarkup(keyboard=[
-    [types.KeyboardButton(text='GO')],
-    [types.KeyboardButton(text='Перезаполнить профиль'),
-    types.KeyboardButton(text='Не хочу больше участвовать')]
-])
 
 
 class Order(StatesGroup):
@@ -32,6 +27,29 @@ async def start(message: types.Message, state: FSMContext, model_user: User | No
         logger.info(f'New user join to us {message.from_user.username}')
         return await state.set_state(Order.waiting_for_password)
     await send_profile(model_user, state, answer)
+
+
+@auth_router.message(commands='help')
+async def help_message(message: types.Message, model_user: User):
+    base_text = (
+        'Основные команды:\n'
+        '/start - Открывает меню. Здесь можно прекратить поиск пар или возобновить его, '
+        'а также изменить свой профиль.\n'
+    )
+    admin_text = (
+        'Команды для администратора:\n'
+        '/add_admin - Добавляет администратора.\n'
+        'Пример:\n'
+        '   /add_admin @user1 @user2 @user3\n'
+        '/add_profession - Добавляет профессию для студентов-респондентов\n'
+        'Пример:\n'
+        '   /add_profession Python Developer\n'
+        '/ask_pairs - Команда нужна для "ручного" запуска проверки пар\n'
+        '/ask_pair - Бот игнорирует время когда была создана пара, и спрашивает '
+        'у неё - "как прошла встреча?"\n'
+    )
+    text = base_text + (admin_text if model_user.is_admin else '')
+    await message.answer(text)
 
 
 @auth_router.message(state=Order.waiting_for_password)

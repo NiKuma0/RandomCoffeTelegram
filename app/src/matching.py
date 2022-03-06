@@ -111,9 +111,12 @@ async def get_match(user: User) -> User:
 
 
 async def get_feedback(pair: Pair):
+    pair.date_complete = datetime.datetime.now()
+    pair.complete = True
+    pair.save()
     buttons = [[
         types.InlineKeyboardButton(text='Да!', callback_data=f'match_complite_{pair.id}'),
-        types.InlineKeyboardButton(text='Нет', callback_data='match_not_complite')
+        types.InlineKeyboardButton(text='Нет', callback_data=f'match_not_complite_{pair.id}')
     ]]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     await BOT.send_message(
@@ -123,9 +126,24 @@ async def get_feedback(pair: Pair):
     )
 
 
-@match_router.callback_query(F.data == 'match_not_complite')
+@match_router.callback_query(F.data[:18] == 'match_not_complite_')
 async def match_not_complite(data: types.CallbackQuery):
-    await data.message.edit_text('Пожалуйста, напиши в телеграм @ksu_bark, она поможет :)')
+    await data.message.delete()
+    pair_id = int(data.data[18:])
+    pair = Pair.get_by_id(pair_id)
+    buttons = [[
+        types.InlineKeyboardButton(text='GO', callback_data='start_matching')
+    ]]
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
+    await pair_send_message(
+        pair,
+        {'text': ('Пожалуйста, напиши в телеграм @ksu_bark, она поможет :)\n'
+        'Если хочешь найти другую пару нажми "GO"'),
+        'reply_markup': keyboard},
+        {'text': ('Спасибо большое за участие! Если тебе хочется '
+        'поучаствовать снова, просто нажми на кнопку GO'),
+        'reply_markup': keyboard}
+    )
 
 
 @match_router.callback_query(F.data[:15] == 'match_complite_')
@@ -133,9 +151,6 @@ async def match_complite(data: types.CallbackQuery, model_user: User):
     await data.message.delete()
     pair_id = int(data.data[15:])
     pair = Pair.get_by_id(pair_id)
-    pair.date_complete = datetime.datetime.now()
-    pair.complete = True
-    pair.save()
     buttons = [[
         types.InlineKeyboardButton(text='GO', callback_data='start_matching')
     ]]
