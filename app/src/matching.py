@@ -63,11 +63,16 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
         )
     text = lambda user: (
         'Твоя пара на эту неделю:\n'
-        f'{user.full_name}\n'
-        f'{user.profession}\n'
-        f'@{user.teleg_username}\n'
+        f'Имя: {user.full_name}\n'
+        f'Профессия: {user.profession}\n'
+        f'Телерграм: @{user.teleg_username}\n'
         'Напиши своей паре приветсвие и предложи удобные дни и время для созвона.'
-        'В разговоре ты можешь опираться на этот гайд (здесь скоро будет ссылка)'
+        'В разговоре ты можешь опираться на этот гайд '
+        + (
+        '(https://praktikum.notion.site/random-coffee-IT-5df78a17680a429f80d110dcfdb491d2)'
+        if user.is_hr else 
+        '(https://praktikum.notion.site/random-coffee-IT-0dbc947e5ed34871a7b07e750c571a23)'
+        )
     )
     logger.info(f'New pair {model_user} -> {to_user}')
     await answer(text=text(to_user))
@@ -114,35 +119,38 @@ async def get_feedback(pair: Pair):
     pair.date_complete = datetime.datetime.now()
     pair.complete = True
     pair.save()
-    buttons = [[
+    hr_buttons = [[
         types.InlineKeyboardButton(text='Да!', callback_data=f'match_complite_{pair.id}'),
         types.InlineKeyboardButton(text='Нет', callback_data=f'match_not_complite_{pair.id}')
     ]]
-    keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
-    await BOT.send_message(
-        pair.hr.teleg_id,
-        'Удалось ли созвониться?',
-        reply_markup=keyboard
+
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=hr_buttons)
+    await pair_send_message(
+        pair,
+        {'text': 'Удалось ли созвониться?',
+        'reply_markup': keyboard},
+        {'text': ('Спасибо большое за участие! Если тебе хочется '
+        'поучаствовать снова, просто нажми на кнопку GO'),
+        'reply_markup': types.InlineKeyboardMarkup(
+            inline_keyboard=[[types.InlineKeyboardButton(text='GO', callback_data='start_matching')]]
+        )}
     )
 
 
-@match_router.callback_query(F.data[:18] == 'match_not_complite_')
+@match_router.callback_query(F.data[:19] == 'match_not_complite_')
 async def match_not_complite(data: types.CallbackQuery):
     await data.message.delete()
-    pair_id = int(data.data[18:])
+    pair_id = int(data.data[19:])
     pair = Pair.get_by_id(pair_id)
     buttons = [[
         types.InlineKeyboardButton(text='GO', callback_data='start_matching')
     ]]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
-    await pair_send_message(
-        pair,
-        {'text': ('Пожалуйста, напиши в телеграм @ksu_bark, она поможет :)\n'
+    await BOT.send_message(
+        pair.hr.teleg_id,
+        text=('Пожалуйста, напиши в телеграм @ksu_bark, она поможет :)\n'
         'Если хочешь найти другую пару нажми "GO"'),
-        'reply_markup': keyboard},
-        {'text': ('Спасибо большое за участие! Если тебе хочется '
-        'поучаствовать снова, просто нажми на кнопку GO'),
-        'reply_markup': keyboard}
+        reply_markup=keyboard
     )
 
 
@@ -150,19 +158,16 @@ async def match_not_complite(data: types.CallbackQuery):
 async def match_complite(data: types.CallbackQuery, model_user: User):
     await data.message.delete()
     pair_id = int(data.data[15:])
-    pair = Pair.get_by_id(pair_id)
+    pair: Pair = Pair.get_by_id(pair_id)
     buttons = [[
         types.InlineKeyboardButton(text='GO', callback_data='start_matching')
     ]]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
-    await pair_send_message(
-        pair,
-        {'text': ('Поделись своими эмоциями в канале communication! '
+    await BOT.send_message(
+        pair.hr.teleg_id,
+        text=('Поделись своими эмоциями в канале communication! '
         'Если ты захочешь участвовать еще раз, просто нажми на кнопку GO'),
-        'reply_markup': keyboard},
-        {'text': ('Спасибо большое за участие! Если тебе хочется '
-        'поучаствовать снова, просто нажми на кнопку GO'),
-        'reply_markup': keyboard}
+        reply_markup=keyboard
     )
 
 
