@@ -58,8 +58,8 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
     if not to_user:
         model_user.last_matching_date = datetime.datetime.now()
         return await answer(
-            'К сожалению прямо сейчас сейчас я не смог подобрать тебе пару, '
-            'но как только у меня появится кандидат, сразу тебе напишу.'
+            'К сожалению прямо сейчас сейчас я не смог подобрать вам пару, '
+            'но как только у меня появится кандидат, сразу вам напишу.'
         )
     text = lambda user: (
         'Твоя пара на эту неделю:\n'
@@ -67,7 +67,7 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
         f'Профессия: {user.profession}\n'
         f'Телерграм: @{user.teleg_username}\n'
         'Напиши своей паре приветсвие и предложи удобные дни и время для созвона.'
-        'В разговоре ты можешь опираться на этот гайд '
+        'В разговоре вы можете опираться на этот гайд '
         + (
         '(https://praktikum.notion.site/random-coffee-IT-5df78a17680a429f80d110dcfdb491d2)'
         if user.is_hr else 
@@ -129,7 +129,7 @@ async def get_feedback(pair: Pair):
         pair,
         {'text': 'Удалось ли созвониться?',
         'reply_markup': keyboard},
-        {'text': ('Спасибо большое за участие! Если тебе хочется '
+        {'text': ('Спасибо большое за участие! Если вам хочется '
         'поучаствовать снова, просто нажми на кнопку GO'),
         'reply_markup': types.InlineKeyboardMarkup(
             inline_keyboard=[[types.InlineKeyboardButton(text='GO', callback_data='start_matching')]]
@@ -166,7 +166,7 @@ async def match_complite(data: types.CallbackQuery, model_user: User):
     await BOT.send_message(
         pair.hr.teleg_id,
         text=('Поделись своими эмоциями в канале communication! '
-        'Если ты захочешь участвовать еще раз, просто нажми на кнопку GO'),
+        'Если вы захотите участвовать еще раз, просто нажми на кнопку GO'),
         reply_markup=keyboard
     )
 
