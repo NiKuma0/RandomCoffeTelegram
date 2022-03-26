@@ -3,7 +3,7 @@ import logging
 from aiogram import types, Router, F
 from aiogram.dispatcher.fsm.state import State, StatesGroup
 from aiogram.dispatcher.fsm.context import FSMContext
-from app.config import ADMINS
+from config import ADMINS
 
 from db.models import User, Profession
 
