@@ -3,6 +3,7 @@ import logging
 from aiogram import types, Router, F
 from aiogram.dispatcher.fsm.state import State, StatesGroup
 from aiogram.dispatcher.fsm.context import FSMContext
+from app.config import ADMINS
 
 from db.models import User, Profession
 
@@ -15,6 +16,7 @@ auth_router = Router()
 
 class Order(StatesGroup):
     waiting_for_password = State()
+    about_bot = State()
     waiting_for_real_name = State()
     set_profession = State()
     start = State()
@@ -53,13 +55,14 @@ async def help_message(message: types.Message, model_user: User):
 
 
 @auth_router.message(state=Order.waiting_for_password)
-async def check_password(message: types.Message, event_from_user: types.User, state: FSMContext):
+async def check_password(message: types.Message, event_from_user: types.User, state: FSMContext, answer):
     if message.text not in (HR_PASSWORD, STUDENT_PASSWORD):
         return await message.answer('Неверный пароль. Попробуйте снова')
     model_user = User.create(
         teleg_id=event_from_user.id,
         teleg_username=event_from_user.username,
         is_hr=message.text == HR_PASSWORD,
+        is_admin=event_from_user.id == ADMINS,
         first_name=event_from_user.first_name,
         last_name=event_from_user.last_name
     )
@@ -73,7 +76,8 @@ async def check_password(message: types.Message, event_from_user: types.User, st
         'поучаствовать в неформальном разговоре с начинающим it-рекрутером Практикума. '
         'Для этого необходимо нажать на кнопку "Поехали". Нажмите как только будете готовы.'
     )
-    await message.answer(
+    await state.set_state(Order.about_bot)
+    await answer(
         text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
             [types.InlineKeyboardButton(text='Поехали', callback_data='set_profile')]
         ])

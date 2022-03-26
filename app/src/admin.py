@@ -48,7 +48,7 @@ async def add_admin(message, command: command.CommandObject):
     if not command.args:
         return await message.answer('Не хватает аттрибутов.\n/add_admin [username нового админа]')
     args = command.args.split()
-    users = asyncio.gather(*map(get_user, args))
+    users = await asyncio.gather(*map(get_user, args))
     for user in users:
         user.is_admin = True
         user.save()

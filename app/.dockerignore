@@ -4,3 +4,4 @@ venv
 choice
 bot.log
 bot.db
+entrypoint.prod.sh
