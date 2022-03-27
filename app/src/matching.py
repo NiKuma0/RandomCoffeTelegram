@@ -188,6 +188,7 @@ async def overdue(pair: Pair):
     }
     await pair_send_message(pair, text)
 
+
 def ask_pairs():
     overdue_pair = (
         Pair.select()
@@ -211,7 +212,7 @@ def ask_pairs():
     asyncio.gather(*map(get_feedback, non_compiled_pairs))
 
 
-schedule.every().day.do(ask_pairs)
+schedule.every().day.at('14:30').do(ask_pairs)
 
 def run_continuously(interval=1):
     cease_continuous_run = THREADING_EVENT
