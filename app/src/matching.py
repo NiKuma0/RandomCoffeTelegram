@@ -214,7 +214,7 @@ def ask_pairs():
     logger.info('Asking complite!')
 
 
-schedule.every().day.at('14:30').do(ask_pairs)
+schedule.every().day.at('15:00').do(ask_pairs)
 
 def run_continuously(interval=1):
     cease_continuous_run = THREADING_EVENT
