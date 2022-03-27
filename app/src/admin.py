@@ -75,7 +75,7 @@ async def add_profession(message: types.Message, command: command.CommandObject)
 @admin_router.message(commands='ask_pairs')
 async def admin_ask_pairs(message):
     await message.answer('Запустил!')
-    ask_pairs()
+    await ask_pairs()
 
 
 @admin_router.message(commands='ask_pair')

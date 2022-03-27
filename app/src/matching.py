@@ -4,11 +4,10 @@ import threading
 import datetime
 import time
 
-import schedule
 from aiogram import Router, types, F
 
 from db.models import User, Pair
-from config import THREADING_EVENT, BOT
+from config import BOT
 
 
 logger = logging.getLogger(__name__)
@@ -180,50 +179,27 @@ async def pair_send_message(pair: Pair, message_to_hr: dict, message_to_responde
     )
 
 
-async def overdue(pair: Pair):
-    buttons = [[types.InlineKeyboardButton(text='Да', callback_data='start_matching')]]
-    text = {
-        'text': 'Ваша пара просрочена (срок жизни пары 10 дней). Хотите найти другую?',
-        'reply_markup': types.InlineKeyboardMarkup(inline_keyboard=buttons) 
-    }
-    await pair_send_message(pair, text)
-
-
-def ask_pairs():
+async def ask_pairs():
     logger.info('Asking pairs...')
-    overdue_pairs = (
-        Pair.select()
-        .where(
-            Pair.complete == False,
-            Pair.match_date <= datetime.datetime.now() - datetime.timedelta(days=10)
-        )
-    )
-    [asyncio.run(overdue(overdue_pair)) for overdue_pair in overdue_pairs]
-    Pair.update(complete=True).where(
-        Pair.complete == False,
-        Pair.match_date <= datetime.datetime.now() - datetime.timedelta(days=10)
-    ).execute()
     non_complite_pairs = (
         Pair.select()
         .where(
             Pair.complete == False,
-            Pair.match_date >= datetime.datetime.now() - datetime.timedelta(days=5)
+            Pair.match_date <= datetime.datetime.now() - datetime.timedelta(days=5)
         )
     )
-    [asyncio.run(get_feedback(non_complite_pair) for non_complite_pair in non_complite_pairs)]
+    [await get_feedback(non_complite_pair) for non_complite_pair in non_complite_pairs]
     logger.info('Asking complite!')
 
 
-schedule.every().day.at('12:30').do(ask_pairs)
-
 def run_continuously(interval=1):
-    cease_continuous_run = threading.Thread()
+    cease_continuous_run = threading.Event()
     class ScheduleThread(threading.Thread):
         @classmethod
         def run(cls):
             while not cease_continuous_run.is_set():
-                schedule.run_pending()
-                time.sleep(interval)
+                time.sleep(60 * 60 * 6)
+                asyncio.run(ask_pairs())
 
     continuous_thread = ScheduleThread()
     continuous_thread.start()

@@ -25,10 +25,10 @@ async def main():
     create_tables()
     logger.info('Created tables')
     register_middlewares()
-    run_continuously()
     DP.include_router(auth_router)
     DP.include_router(admin_router)
     DP.include_router(match_router)
+    run_continuously()
 
 
 if __name__ == '__main__':
