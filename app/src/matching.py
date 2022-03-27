@@ -190,6 +190,7 @@ async def overdue(pair: Pair):
 
 
 def ask_pairs():
+    logger.info('Asking pairs...')
     overdue_pair = (
         Pair.select()
         .where(
@@ -210,6 +211,7 @@ def ask_pairs():
         )
     )
     asyncio.gather(*map(get_feedback, non_compiled_pairs))
+    logger.info('Asking complite!')
 
 
 schedule.every().day.at('14:30').do(ask_pairs)
