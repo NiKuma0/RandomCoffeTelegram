@@ -191,33 +191,33 @@ async def overdue(pair: Pair):
 
 def ask_pairs():
     logger.info('Asking pairs...')
-    overdue_pair = (
+    overdue_pairs = (
         Pair.select()
         .where(
             Pair.complete == False,
             Pair.match_date <= datetime.datetime.now() - datetime.timedelta(days=10)
         )
     )
-    asyncio.gather(*map(overdue, overdue_pair))
+    [asyncio.run(overdue(overdue_pair)) for overdue_pair in overdue_pairs]
     Pair.update(complete=True).where(
         Pair.complete == False,
         Pair.match_date <= datetime.datetime.now() - datetime.timedelta(days=10)
     ).execute()
-    non_compiled_pairs = (
+    non_complite_pairs = (
         Pair.select()
         .where(
             Pair.complete == False,
             Pair.match_date >= datetime.datetime.now() - datetime.timedelta(days=5)
         )
     )
-    asyncio.gather(*map(get_feedback, non_compiled_pairs))
+    [asyncio.run(get_feedback(non_complite_pair) for non_complite_pair in non_complite_pairs)]
     logger.info('Asking complite!')
 
 
-schedule.every().day.at('12:00').do(ask_pairs)
+schedule.every().day.at('12:30').do(ask_pairs)
 
 def run_continuously(interval=1):
-    cease_continuous_run = THREADING_EVENT
+    cease_continuous_run = threading.Thread()
     class ScheduleThread(threading.Thread):
         @classmethod
         def run(cls):
