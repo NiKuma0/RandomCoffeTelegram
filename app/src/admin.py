@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+import aioschedule
 from aiogram import types, Router
 from aiogram.dispatcher.filters import BaseFilter, command
 
@@ -76,6 +77,15 @@ async def add_profession(message: types.Message, command: command.CommandObject)
 async def admin_ask_pairs(message):
     await message.answer('Запустил!')
     await ask_pairs()
+
+
+@admin_router.message(commands='ask_pairs_forever')
+async def admin_ask_pairs_forever(message):
+    await message.answer('Запустил!')
+    aioschedule.every().day.at('12:00').do(ask_pairs)
+    while True:
+        await aioschedule.run_pending()
+        await asyncio.sleep(1)
 
 
 @admin_router.message(commands='ask_pair')

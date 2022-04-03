@@ -1,8 +1,6 @@
 import asyncio
 import logging
-import threading
 import datetime
-import time
 
 from aiogram import Router, types, F
 
@@ -115,6 +113,7 @@ async def get_match(user: User) -> User:
 
 
 async def get_feedback(pair: Pair):
+    logger.info(f'pair completed! ({Pair})')
     pair.date_complete = datetime.datetime.now()
     pair.complete = True
     pair.save()
@@ -190,17 +189,3 @@ async def ask_pairs():
     )
     [await get_feedback(non_complite_pair) for non_complite_pair in non_complite_pairs]
     logger.info('Asking complite!')
-
-
-def run_continuously(interval=1):
-    cease_continuous_run = threading.Event()
-    class ScheduleThread(threading.Thread):
-        @classmethod
-        def run(cls):
-            while not cease_continuous_run.is_set():
-                time.sleep(60 * 60 * 6)
-                asyncio.run(ask_pairs())
-
-    continuous_thread = ScheduleThread()
-    continuous_thread.start()
-    return cease_continuous_run
