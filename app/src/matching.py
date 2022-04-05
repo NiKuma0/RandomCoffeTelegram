@@ -113,7 +113,7 @@ async def get_match(user: User) -> User:
 
 
 async def get_feedback(pair: Pair):
-    logger.info(f'pair completed! ({Pair})')
+    logger.info(f'pair completed! ({pair})')
     pair.date_complete = datetime.datetime.now()
     pair.complete = True
     pair.save()
