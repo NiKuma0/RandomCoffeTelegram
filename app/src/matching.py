@@ -117,9 +117,10 @@ async def get_match(user: User) -> User:
 
 async def get_feedback(pair: Pair):
     logger.info(f'pair completed! ({pair})')
+    manager = Manager()
     pair.date_complete = datetime.datetime.now()
     pair.complete = True
-    pair.save()
+    await manager.update(pair)
     hr_buttons = [[
         types.InlineKeyboardButton(text='Да!', callback_data=f'match_complite_{pair.id}'),
         types.InlineKeyboardButton(text='Нет', callback_data=f'match_not_complite_{pair.id}')
