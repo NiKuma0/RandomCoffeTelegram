@@ -1,11 +1,12 @@
 import logging
 
 from aiogram import types, Router, F
-from aiogram.dispatcher.fsm.state import State, StatesGroup
-from aiogram.dispatcher.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
 from config import ADMINS
 
 from db.models import User, Profession
+from db import Manager
 
 
 HR_PASSWORD = 'hr_hire'
@@ -58,7 +59,9 @@ async def help_message(message: types.Message, model_user: User):
 async def check_password(message: types.Message, event_from_user: types.User, state: FSMContext, answer):
     if message.text not in (HR_PASSWORD, STUDENT_PASSWORD):
         return await message.answer('Неверный пароль. Попробуйте снова')
-    model_user = User.create(
+
+    manager = Manager()
+    model_user = await manager.create(User,
         teleg_id=event_from_user.id,
         teleg_username=event_from_user.username,
         is_hr=message.text == HR_PASSWORD,
@@ -68,11 +71,11 @@ async def check_password(message: types.Message, event_from_user: types.User, st
     )
     logger.info(f'New user ({model_user.teleg_username}, {model_user.teleg_id}) in Data Base')
     text = (
-        'Этот бот нужен для проведения random coffe. Наш бот предлагает вам '
+        'Этот бот нужен для проведения random coffee. Наш бот предлагает вам '
         'поучаствовать в неформальном разговоре с выпускником Практикума по IT-направлению. '
         'Для этого необходимо нажать на кнопку "Поехали". Нажмите как только будете готовы.'
         if model_user.is_hr else
-        'Этот бот нужен для проведения random coffe. Наш бот предлагает вам '
+        'Этот бот нужен для проведения random coffee. Наш бот предлагает вам '
         'поучаствовать в неформальном разговоре с начинающим it-рекрутером Практикума. '
         'Для этого необходимо нажать на кнопку "Поехали". Нажмите как только будете готовы.'
     )
@@ -145,7 +148,10 @@ async def set_profession(data: types.CallbackQuery, model_user: User, state, ans
 async def profession_paginator(page=None) -> types.InlineKeyboardMarkup:
     page = page or 1
     count_items = 3
-    professions = Profession.select().order_by(Profession.id)
+    manager = Manager()
+    professions = await manager.execute(
+        Profession.select().order_by(Profession.id)
+    )
     switch = []
     buttons = [
         [types.InlineKeyboardButton(text=profession.name, callback_data=f'profession_{profession.id}')]

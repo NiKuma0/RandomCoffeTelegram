@@ -3,10 +3,11 @@ import logging
 
 import aioschedule
 from aiogram import types, Router
-from aiogram.dispatcher.filters import BaseFilter, command
+from aiogram.filters import BaseFilter, command
 
 from src.matching import ask_pairs, get_feedback
 from db.models import User, Pair, Profession
+from db import Manager
 
 types.InputMessageContent
 admin_router = Router()
@@ -35,8 +36,9 @@ admin_router.message.bind_filter(AdminFilter)
 
 async def get_user(username: str, async_func_answer_error=None) -> User:
     error_msg = f'Пользаватель, @{username}, не найден. Возможно он не запускал бот.'
+    manager = Manager()
     try:
-        return User.get(User.teleg_username == username)
+        return await manager.get(User, User.teleg_username == username)
     except User.DoesNotExist as error:
         if not async_func_answer_error:
             raise error
@@ -54,20 +56,21 @@ async def add_admin(message, command: command.CommandObject):
         user.is_admin = True
         user.save()
     await message.answer((
-        f'Пользаватель, @{args[0]}, успешно посвящён в администраторы!' 
+        f'Пользователь, @{args[0]}, успешно посвящён в администраторы!' 
         if len(command.args) == 1 else
-        f'Пользаватели успешно посвящанны в администраторы!\n{" @".join(args)}'
+        f'Пользователи успешно посвящаенный в администраторы!\n{" @".join(args)}'
     ))
 
 
 @admin_router.message(commands='add_profession')
 async def add_profession(message: types.Message, command: command.CommandObject):
+    manager = Manager()
     if not command.args:
         return await message.answer(
             'Нехватает атрибутов.\n'
             '   /add_profession [Название профессии]'
         )
-    Profession.create(name=command.args)
+    await manager.create(Profession, name=command.args)
     await message.answer(
         'Успешно!'
     )
@@ -92,16 +95,17 @@ async def admin_ask_pairs_forever(message):
 async def admin_ask_pair(message: types.Message, command: command.CommandObject):
     if not command.args or len(args := command.args.split()) != 2:
         return await message.answer(
-            'Комманда принимает только 2 аргумента.\n'
+            'Команда принимает только 2 аргумента.\n'
             '   /ask_pair [hr] [респондент]  # Порядок важен!'
         )
+    manager = Manager()
     hr, respondent = await asyncio.gather(*map(get_user, args))
     try:
-        pair = Pair.get(Pair.hr == hr, Pair.respondent == respondent)
+        pair = await manager.get(Pair, Pair.hr == hr, Pair.respondent == respondent)
     except Pair.DoesNotExist:
         return await message.answer(
             'Пара не найдена. Проверьте порядок:\n'
-            '   /ask_pair [hr] [респондент]  # Сночало hr потом респондент'
+            '   /ask_pair [hr] [респондент]  # Сначала hr потом респондент'
         )
     await message.answer('Успешно!')
     await get_feedback(pair)
@@ -109,4 +113,4 @@ async def admin_ask_pair(message: types.Message, command: command.CommandObject)
 
 @admin_router.errors(ErrorFilterUserDoesNotExist())
 async def user_not_exist(update: types.Update, exception):
-    await update.message.answer('Пользаватель не найден')
+    await update.message.answer('Пользователь не найден')
