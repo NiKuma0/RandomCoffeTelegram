@@ -63,7 +63,7 @@ async def check_password(message: types.Message, event_from_user: types.User, st
     manager = Manager()
     model_user = await manager.create(User,
         teleg_id=event_from_user.id,
-        teleg_username=event_from_user.username,
+        teleg_username=event_from_user.username or event_from_user.full_name,
         is_hr=message.text == HR_PASSWORD,
         is_admin=event_from_user.id == ADMINS,
         first_name=event_from_user.first_name,
