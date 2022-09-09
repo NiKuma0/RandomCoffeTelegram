@@ -69,6 +69,10 @@ class User(BaseModel):
                 self.first_name, self.last_name = first_name, last_name
             case first_name,:
                 self.first_name, self.last_name = first_name, None
+
+    @property
+    def mention(self):
+        return f'[{self.teleg_username}](tg://user?id={self.teleg_id})'
     
 
     def __repr__(self) -> str:
