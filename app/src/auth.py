@@ -148,20 +148,20 @@ async def set_profession(data: types.CallbackQuery, model_user: User, state, ans
 async def profession_paginator(page=None) -> types.InlineKeyboardMarkup:
     page = page or 1
     count_items = 3
-    manager = Manager()
-    professions = await manager.execute(
-        Profession.select().order_by(Profession.id)
-    )
     switch = []
+    manager = Manager()
+    query = Profession.select().order_by(Profession.id)
+
     buttons = [
         [types.InlineKeyboardButton(text=profession.name, callback_data=f'profession_{profession.id}')]
-        for profession in professions.paginate(page, count_items)
+        for profession in await manager.execute(query.paginate(page, count_items))
     ]
+
     if page != 1:
         switch.append(
             types.InlineKeyboardButton(text='<', callback_data=f'page_{page - 1}')
         )
-    if page * count_items < professions.count():
+    if page * count_items < await manager.count(query):
         switch.append(
             types.InlineKeyboardButton(text='>', callback_data=f'page_{page + 1}')
         )

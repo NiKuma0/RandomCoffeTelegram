@@ -60,12 +60,12 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
             'но как только у меня появится кандидат, сразу вам напишу.'
         )
     text = lambda user: (
-        'Твоя пара на эту неделю:\n'
-        f'Имя: {user.full_name}\n'
-        f'Профессия: {user.profession}\n'
-        f'Телерграм: @{user.teleg_username}\n'
-        'Напиши своей паре приветствие и предложи удобные дни и время для созвона.'
-        'В разговоре вы можете опираться на этот гайд '
+        'Твоя пара на эту неделю\\:\n'
+        f'Имя\\: {user.full_name}\n'
+        f'Профессия\\: {user.profession}\n'
+        f'Телерграм\\: {user.mention}\n'
+        'Напиши своей паре приветствие и предложи удобные дни и время для созвона\\.'
+        'В разговоре вы можете опираться на этот [гайд]'
         + (
         '(https://praktikum.notion.site/random-coffee-IT-5df78a17680a429f80d110dcfdb491d2)'
         if user.is_hr else 
@@ -73,10 +73,16 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
         )
     )
     logger.info(f'New pair {model_user} -> {to_user}')
-    await answer(text=text(to_user))
+    # To current user
+    await answer(
+        text=text(to_user),
+        parse_mode='MarkdownV2'
+    )
+    # To match user
     await BOT.send_message(
         to_user.teleg_id,
-        text(model_user)
+        text(model_user),
+        parse_mode='MarkdownV2'
     )
 
 
