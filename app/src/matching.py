@@ -102,10 +102,10 @@ async def get_match(user: User) -> User:
         ).order_by(User.last_matching_date)
     )
     user_pair_field, to_user_pair_field = (Pair.hr, Pair.respondent) if user.is_hr else (Pair.respondent, Pair.hr)
-    pairs = await manager.execute(user.pairs.select())
+    query = user.pairs.select()
     to_user: User = None
     for choice in active_users:
-        _pairs = await manager.execute(pairs.where(to_user_pair_field == choice))
+        _pairs = await manager.execute(query.where(to_user_pair_field == choice))
         if _pairs:
             continue
         to_user = choice
