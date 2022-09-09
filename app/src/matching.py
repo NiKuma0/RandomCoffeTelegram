@@ -63,23 +63,23 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
             'но как только у меня появится кандидат, сразу вам напишу.'
         )
     text = lambda user: (
-        'Твоя пара на эту неделю\\:\n'
-        f'Имя\\: {user.full_name}\n'
-        f'Профессия\\: {user.profession}\n'
-        f'Телерграм\\: {user.mention}\n'
-        'Напиши своей паре приветствие и предложи удобные дни и время для созвона\\.'
-        'В разговоре вы можете опираться на этот [гайд]'
+        'Твоя пара на эту неделю:\n'
+        f'Имя: {user.full_name}\n'
+        f'Профессия: {user.profession}\n'
+        f'Телерграм: {user.mention}\n'
+        'Напиши своей паре приветствие и предложи удобные дни и время для созвона.'
+        'В разговоре вы можете опираться на этот <a href='
         + (
-        '(https://praktikum.notion.site/random-coffee-IT-5df78a17680a429f80d110dcfdb491d2)'
+        '"https://praktikum.notion.site/random-coffee-IT-5df78a17680a429f80d110dcfdb491d2"'
         if user.is_hr else 
-        '(https://praktikum.notion.site/random-coffee-IT-0dbc947e5ed34871a7b07e750c571a23)'
-        )
+        '"https://praktikum.notion.site/random-coffee-IT-0dbc947e5ed34871a7b07e750c571a23"'
+        ) + '>гайд</a>'
     )
     logger.info(f'New pair {model_user} -> {to_user}')
     # To current user
     await answer(
         text=text(to_user),
-        parse_mode='MarkdownV2'
+        parse_mode='HTML'
     )
     # To match user
     await BOT.send_message(

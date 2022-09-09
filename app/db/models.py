@@ -72,7 +72,7 @@ class User(BaseModel):
 
     @property
     def mention(self):
-        return f'[{self.teleg_username}](tg://user?id={self.teleg_id})'
+        return f'<a href="tg://user?id={self.teleg_id}">{self.teleg_username}</a>'
     
 
     def __repr__(self) -> str:
