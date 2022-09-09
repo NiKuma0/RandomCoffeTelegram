@@ -48,7 +48,8 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
         pair: Pair = non_complite_date[0]
         to_user = pair.respondent if model_user.is_hr else pair.hr
         return await answer(
-            f'У вас уже есть не законченная встреча c @{to_user.teleg_username}!'
+            f'У вас уже есть не законченная встреча c {to_user.mention}!',
+            parse_mode='HTML'
         )
 
     model_user.is_active = True
