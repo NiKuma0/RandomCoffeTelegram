@@ -113,7 +113,7 @@ async def get_match(user: User) -> User:
         logger.info(f'Pair not defined for the user {user.teleg_username}')
         return
     logger.info(f'New pair: {user.teleg_username} -> {to_user.teleg_username}')
-    await manager.create(Pair **{
+    await manager.create(Pair, **{
         user_pair_field.column_name: user,
         to_user_pair_field.column_name: to_user
     }) 
