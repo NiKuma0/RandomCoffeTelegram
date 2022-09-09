@@ -27,6 +27,7 @@ async def deactivate_user(data: types.CallbackQuery | types.Message, model_user:
 @match_router.callback_query(F.data == 'start_matching')
 async def start_matching(data: types.CallbackQuery | types.Message, model_user: User):
     answer = data.message.edit_text
+    manager = Manager()
     if datetime.datetime.now() - model_user.register_date >= datetime.timedelta(weeks=14):
         model_user.is_active = False
         model_user.save()
@@ -39,20 +40,22 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
         return await answer(
             'Ваш профиль заблокирован т.к. срок жизни аккаунта 3 месяца.'
         )
-    non_complite_date = model_user.pairs.where(
+    non_complite_date = await manager.execute(model_user.pairs.where(
         Pair.complete == False
-    )
+    ))
     
-    if non_complite_date.exists():
-        pair: Pair= non_complite_date.first()
+    if non_complite_date:
+        pair: Pair = non_complite_date[0]
         to_user = pair.respondent if model_user.is_hr else pair.hr
         return await answer(
             f'У вас уже есть не законченная встреча c @{to_user.teleg_username}!'
         )
+
     model_user.is_active = True
-    model_user.save()
+    await manager.update(model_user)
     await data.answer('Ищу пару...')
     to_user = await get_match(model_user)
+
     if not to_user:
         model_user.last_matching_date = datetime.datetime.now()
         return await answer(
@@ -100,7 +103,7 @@ async def get_match(user: User) -> User:
     )
     user_pair_field, to_user_pair_field = (Pair.hr, Pair.respondent) if user.is_hr else (Pair.respondent, Pair.hr)
     pairs = await manager.execute(user.pairs.select())
-    to_user: User= None
+    to_user: User = None
     for choice in active_users:
         _pairs = await manager.execute(pairs.where(to_user_pair_field == choice))
         if _pairs:
@@ -116,8 +119,8 @@ async def get_match(user: User) -> User:
     }) 
     user.is_active = False
     to_user.is_active = False
-    user.save()
-    to_user.save()
+    await manager.update(user)
+    await manager.update(to_user)
     return to_user
 
 
