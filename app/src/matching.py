@@ -71,9 +71,9 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
         'Напиши своей паре приветствие и предложи удобные дни и время для созвона.'
         'В разговоре вы можете опираться на этот <a href='
         + (
-        '"https://praktikum.notion.site/random-coffee-IT-5df78a17680a429f80d110dcfdb491d2"'
+        '"https://praktikum.notion.site/random\\-coffee\\-IT\\-5df78a17680a429f80d110dcfdb491d2"'
         if user.is_hr else 
-        '"https://praktikum.notion.site/random-coffee-IT-0dbc947e5ed34871a7b07e750c571a23"'
+        '"https://praktikum.notion.site/random\\-coffee\\-IT\\-0dbc947e5ed34871a7b07e750c571a23"'
         ) + '>гайд</a>'
     )
     logger.info(f'New pair {model_user} -> {to_user}')
@@ -86,7 +86,7 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
     await BOT.send_message(
         to_user.teleg_id,
         text(model_user),
-        parse_mode='MarkdownV2'
+        parse_mode='HTML'
     )
 
 
@@ -103,7 +103,7 @@ async def get_match(user: User) -> User:
         ).order_by(User.last_matching_date)
     )
     user_pair_field, to_user_pair_field = (Pair.hr, Pair.respondent) if user.is_hr else (Pair.respondent, Pair.hr)
-    query = user.pairs.select()
+    query = user.pairs
     to_user: User = None
     for choice in active_users:
         _pairs = await manager.execute(query.where(to_user_pair_field == choice))
