@@ -53,14 +53,9 @@ class User(BaseModel):
 
     @property
     def full_name(self):
-        match self:
-            case User(first_name=str(first_name), last_name=str(last_name)):
-                return f'{first_name} {last_name}'
-            case User(first_name=str(first_name)):
-                return f'{first_name}'
-            case User(teleg_username=str(username)):
-                return f'{username}'
-        return None
+        if self.last_name:
+            return f'{self.first_name} {self.last_name}'
+        return self.first_name or self.teleg_username
 
     @full_name.setter
     def full_name(self, value: str):
@@ -72,7 +67,7 @@ class User(BaseModel):
 
     @property
     def mention(self):
-        return f'<a href="tg://user?id={self.teleg_id}">{self.teleg_username}</a>'
+        return f'<a href="tg://user?id={self.teleg_id}">{self.teleg_username or self.full_name}</a>'
     
 
     def __repr__(self) -> str:

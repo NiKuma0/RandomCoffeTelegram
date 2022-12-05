@@ -185,11 +185,12 @@ async def send_profile(model_user: User, state: FSMContext, answer):
         'Ваш профиль:\n'
         f'Имя: {model_user.full_name}\n'
         f'Профессия: {model_user.profession}\n'
-        f'Телеграм: @{model_user.teleg_username}\n' +
+        f'Телеграм: {model_user.mention}\n' +
         (
         'Если пока не хотите участвовать нажмите на кнопку ниже'
         if model_user.is_active else
         'Если вы готовы начать нажмите "GO"'
         ),
-        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=buttons)
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=buttons),
+        parse_mode='HTML',
     )
