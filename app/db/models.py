@@ -12,7 +12,7 @@ class Profession(BaseModel):
 
 class User(BaseModel):
     teleg_id = peewee.CharField(primary_key=True)
-    teleg_username = peewee.CharField()
+    teleg_username = peewee.CharField(null=True)
     is_admin = peewee.BooleanField(default=False)
     is_active = peewee.BooleanField(default=False)
     is_hr = peewee.BooleanField(default=False)
