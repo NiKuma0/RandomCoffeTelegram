@@ -9,7 +9,6 @@ from src.matching import ask_pairs, get_feedback
 from db.models import User, Pair, Profession
 from db import Manager
 
-types.InputMessageContent
 admin_router = Router()
 logger = logging.getLogger(__name__)
 
@@ -111,6 +110,35 @@ async def admin_ask_pair(message: types.Message, command: command.CommandObject)
     await get_feedback(pair)
 
 
+@admin_router.message(commands='admin_reset')
+async def admin_reset(message: types.Message, command: command.CommandObject):
+    if not command.args or len(command.args.split()) != 1:
+        return await message.answer(
+            'Команда принимает только 1 аргумент.\n'
+            '   /admin_reset [admin_username]'
+        )
+    admin = await get_user(command.args)
+    manager = Manager()
+    admin.is_admin = False
+    await manager.update(admin)
+    await message.answer('Успешно!')
+
+@admin_router.message(commands='change_role')
+async def change_role(message: types.Message, command: command.CommandObject):
+    if not command.args or len(command.args.split()) != 1:
+        return await message.answer(
+            'Команда принимает только 1 аргумент.\n'
+            '   /change_role [username]'
+        )
+    user = await get_user(command.args)
+    manager = Manager()
+    user.is_hr = not user.is_hr
+    await manager.update(user)
+    await message.answer('Успешно!')
+    
+
+
 @admin_router.errors(ErrorFilterUserDoesNotExist())
 async def user_not_exist(update: types.Update, exception):
     await update.message.answer('Пользователь не найден')
+
