@@ -123,6 +123,7 @@ async def admin_reset(message: types.Message, command: command.CommandObject):
     await manager.update(admin)
     await message.answer('Успешно!')
 
+
 @admin_router.message(commands='change_role')
 async def change_role(message: types.Message, command: command.CommandObject):
     if not command.args or len(command.args.split()) != 1:

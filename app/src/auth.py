@@ -26,8 +26,8 @@ class Order(StatesGroup):
 @auth_router.message(commands='start')
 async def start(message: types.Message, state: FSMContext, model_user: User | None, answer):
     if model_user is None:
+        logger.info('New user join to us %s', message.from_user.username)
         await message.answer('Введите ваш код:')
-        logger.info(f'New user join to us {message.from_user.username}')
         return await state.set_state(Order.waiting_for_password)
     await send_profile(model_user, state, answer)
 
@@ -61,7 +61,8 @@ async def check_password(message: types.Message, event_from_user: types.User, st
         return await message.answer('Неверный пароль. Попробуйте снова')
 
     manager = Manager()
-    model_user = await manager.create(User,
+    model_user = await manager.create(
+        User,
         teleg_id=event_from_user.id,
         teleg_username=event_from_user.username or event_from_user.full_name,
         is_hr=message.text == HR_PASSWORD,
@@ -69,7 +70,10 @@ async def check_password(message: types.Message, event_from_user: types.User, st
         first_name=event_from_user.first_name,
         last_name=event_from_user.last_name
     )
-    logger.info(f'New user ({model_user.teleg_username}, {model_user.teleg_id}) in Data Base')
+    logger.info(
+        'New user (%s, %s) in Data Base',
+        model_user.teleg_username, model_user.teleg_id
+    )
     text = (
         'Этот бот нужен для проведения random coffee. Наш бот предлагает вам '
         'поучаствовать в неформальном разговоре с выпускником Практикума по IT-направлению. '
@@ -118,7 +122,7 @@ async def change_name(message, state: FSMContext, model_user: User, answer):
         return await send_profile(model_user, state, answer)
     await state.set_state(Order.set_profession)
     await get_professions(message, check_data=False)
- 
+
 
 @auth_router.callback_query(F.data[:5] == 'page_')
 async def get_professions(data: types.CallbackQuery | types.Message, check_data=True):

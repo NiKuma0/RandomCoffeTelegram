@@ -140,10 +140,10 @@ async def get_feedback(pair: Pair):
     await pair_send_message(
         pair,
         {'text': 'Удалось ли созвониться?',
-        'reply_markup': keyboard},
+         'reply_markup': keyboard},
         {'text': ('Спасибо большое за участие! Если вам хочется '
-        'поучаствовать снова, просто нажми на кнопку GO'),
-        'reply_markup': types.InlineKeyboardMarkup(
+         'поучаствовать снова, просто нажми на кнопку GO'),
+         'reply_markup': types.InlineKeyboardMarkup(
             inline_keyboard=[[types.InlineKeyboardButton(text='GO', callback_data='start_matching')]]
         )}
     )
@@ -161,8 +161,10 @@ async def match_not_complite(data: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     await BOT.send_message(
         pair.hr.teleg_id,
-        text=('Пожалуйста, напиши в телеграм @ksu_bark, она поможет :)\n'
-        'Если хочешь найти другую пару нажми "GO"'),
+        text=(
+            'Пожалуйста, напиши в телеграм @arr_ink, она поможет :)\n'
+            'Если хочешь найти другую пару нажми "GO"'
+        ),
         reply_markup=keyboard
     )
 
