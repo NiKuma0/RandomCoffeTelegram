@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "randomcoffetelegram"
+version = "0.1.0"
+description = "Telegram Bot for matching between a hr and some person with profession."
+authors = ["Nikuma <ybr811@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aiogram = "^3.0.0b4"
+aioschedule = "^0.5.2"
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
