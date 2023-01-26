@@ -4,8 +4,8 @@ from src.middlewares import register_middlewares
 from src.admin import admin_router
 
 __all__ = (
-    'auth_router',
-    'match_router',
-    'register_middlewares',
-    'admin_router',
+    "auth_router",
+    "match_router",
+    "register_middlewares",
+    "admin_router",
 )

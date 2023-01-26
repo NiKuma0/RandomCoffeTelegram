@@ -8,6 +8,4 @@ from . import database
 
 def drop_not_null_teleg_username(database: PostgresqlDatabase = database) -> None:
     migrator = migrate.PostgresqlMigrator(database)
-    migrate.migrate(
-        migrator.drop_not_null(User._meta.table_name, 'teleg_username')
-    )
+    migrate.migrate(migrator.drop_not_null(User._meta.table_name, "teleg_username"))

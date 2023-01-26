@@ -1,6 +1,6 @@
-'''
+"""
 Testing matching algorithms 
-'''
+"""
 from email.policy import default
 import os
 import datetime
@@ -22,19 +22,14 @@ class User(peewee.Model):
     name = peewee.CharField()
     is_hr = peewee.BooleanField(default=False)
     __queue = peewee.IntegerField(default=-1)
-    
-   
+
     @property
     def queue(self):
         return self.__queue
-    
+
     @queue.setter
     def queue(self, value):
-        self.__queue = value % (
-            User.select()
-            .where(User.is_hr == self.is_hr)
-            .count()
-        )
+        self.__queue = value % (User.select().where(User.is_hr == self.is_hr).count())
 
     @classmethod
     def make_queue(cls):
@@ -50,7 +45,7 @@ class User(peewee.Model):
         return cls.bulk_update(arr, fields=(cls.__queue,))
 
     def __repr__(self):
-        return f'<{self.name} {self.queue}>'
+        return f"<{self.name} {self.queue}>"
 
 
 class Pair(peewee.Model):
@@ -69,13 +64,21 @@ def db():
     os.close(fd)
     os.unlink(name)
 
+
 @pytest.fixture
 def create(db):
     users = [
-        User(name=f'user{i}',) for i in range(COUNT_USERS)
+        User(
+            name=f"user{i}",
+        )
+        for i in range(COUNT_USERS)
     ]
     hrs = [
-        User(name=f'hr{i}', is_hr=True,) for i in range(COUNT_HRS)
+        User(
+            name=f"hr{i}",
+            is_hr=True,
+        )
+        for i in range(COUNT_HRS)
     ]
     User.bulk_create(users)
     User.bulk_create(hrs)
@@ -130,7 +133,7 @@ def __get_choice_arr_and_user(greater, lesser):
         choices_arr = []
         count_choices = coeff + remainder
         int_count = int(count_choices)
-        remainder = (count_choices - int_count)
+        remainder = count_choices - int_count
         for i in range(int_count):
             choices_arr.append(greater_list[index])
             index += 1
@@ -155,7 +158,9 @@ def get_smart_queue(create):
         greater, lesser = (users, hrs) if users.count() > hrs.count() else (hrs, users)
         for choice_arr, user in __get_choice_arr_and_user(greater, lesser):
             random.shuffle(choice_arr)
-            user_pair_field, other_pair_field = (Pair.hr, Pair.respondent) if user.is_hr else (Pair.respondent, Pair.hr)
+            user_pair_field, other_pair_field = (
+                (Pair.hr, Pair.respondent) if user.is_hr else (Pair.respondent, Pair.hr)
+            )
             _pairs = Pair.select().where(user_pair_field == user)
             new_pair = None
             for choice in choice_arr:
@@ -163,33 +168,37 @@ def get_smart_queue(create):
                     loners.append(choice)
                     continue
                 pairs.append(str(choice) + str(user))
-                Pair.create(**{
-                    user_pair_field.column_name: user,
-                    other_pair_field.column_name: choice
-                })
+                Pair.create(
+                    **{
+                        user_pair_field.column_name: user,
+                        other_pair_field.column_name: choice,
+                    }
+                )
     return pairs, loners
 
 
 def test_random(get_random_pairs):
     pairs, loners = get_random_pairs
-    pprint(f'len pairs = {len(pairs)}')
-    pprint(f'len set of pairs = {len(set(pairs))}')
-    pprint(f'len loners = {len(loners)}')
-    pprint(f'len set of loners = {len(set(loners))}')
+    pprint(f"len pairs = {len(pairs)}")
+    pprint(f"len set of pairs = {len(set(pairs))}")
+    pprint(f"len loners = {len(loners)}")
+    pprint(f"len set of loners = {len(set(loners))}")
     assert False
+
 
 def test_queue(get_pairs):
     pairs, loners = get_pairs
-    pprint(f'len pairs = {len(pairs)}')
-    pprint(f'len set of pairs = {len(set(pairs))}')
-    pprint(f'len loners = {len(loners)}')
-    pprint(f'len set of loners = {len(set(loners))}')
+    pprint(f"len pairs = {len(pairs)}")
+    pprint(f"len set of pairs = {len(set(pairs))}")
+    pprint(f"len loners = {len(loners)}")
+    pprint(f"len set of loners = {len(set(loners))}")
     assert False
+
 
 def test_smart_queue(get_smart_queue):
     pairs, loners = get_smart_queue
-    pprint(f'len pairs = {len(pairs)}')
-    pprint(f'len set of pairs = {len(set(pairs))}')
-    pprint(f'len loners = {len(loners)}')
-    pprint(f'len set of loners = {len(set(loners))}')
+    pprint(f"len pairs = {len(pairs)}")
+    pprint(f"len set of pairs = {len(set(pairs))}")
+    pprint(f"len loners = {len(loners)}")
+    pprint(f"len set of loners = {len(set(loners))}")
     assert False

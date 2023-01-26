@@ -4,7 +4,7 @@
 
 # Стек
 * [Python](https://python.org)
-* [aiogram 3.0](https://github.com/aiogram/aiogram/tree/dev-3.x)
+* [aiogram 3](https://github.com/aiogram/aiogram/tree/dev-3.x)
 * PostgreSQL
 * [peewee](https://github.com/coleifer/peewee)
 * [Docker](https://docker.com)
