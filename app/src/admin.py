@@ -4,11 +4,11 @@ import logging
 import aioschedule
 from peewee import DoesNotExist
 from aiogram import types, Router
-from aiogram.dispatcher.filters import BaseFilter, command
+from aiogram.filters import BaseFilter, command
 
-from src.matching import ask_pairs, get_feedback
-from db.models import User, Pair, Profession
-from db import Manager
+from app.src.matching import ask_pairs, get_feedback
+from app.db.models import User, Pair, Profession
+from app.db import Manager
 
 admin_router = Router()
 logger = logging.getLogger(__name__)

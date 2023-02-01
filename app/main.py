@@ -1,13 +1,12 @@
-from importlib.machinery import FrozenImporter
 import logging
 import asyncio
 
-from aiogram import Dispatcher
+from aiogram import Dispatcher, Bot
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from src import register_middlewares, admin_router, match_router, auth_router
-from db.models import create_tables
-from config import BOT
+from app.src import register_middlewares, register_routers
+from app.db import init_db
+from app.config import get_config
 
 
 logger_file_handler = logging.FileHandler("bot.log")
@@ -31,17 +30,18 @@ logger = logging.getLogger()
 
 async def main():
     logger.info("RUN APP")
-    create_tables()
+    config = get_config()
+    bot = Bot(config.BOT_TOKEN, parse_mode="HTML")
+    dp = Dispatcher(storage=MemoryStorage())
+    await init_db(config)
     logger.info("Created tables")
-    dp = Dispatcher(MemoryStorage())
+
     register_middlewares(dp)
-    dp.include_router(auth_router)
-    dp.include_router(admin_router)
-    dp.include_router(match_router)
+    register_routers(dp)
 
     try:
-        return await dp.start_polling(BOT)
-    except (KeyboardInterrupt, SystemExit):  # pragma: no cover
+        return await dp.start_polling(bot, config=config)
+    except (KeyboardInterrupt, SystemExit):
         logger.info("Bot stopped")
 
 

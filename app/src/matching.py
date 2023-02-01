@@ -2,15 +2,13 @@ import asyncio
 import logging
 import datetime
 
-from aiogram import Router, types, F
+from aiogram import Bot, Router, types, F
 
-from db.models import User, Pair
-from db import Manager
-from config import BOT
+from app.db.models import User, Pair
+from app.db import Manager
 
 
 logger = logging.getLogger(__name__)
-bot = BOT
 match_router = Router()
 
 
@@ -24,8 +22,25 @@ async def deactivate_user(data: types.CallbackQuery | types.Message, model_user:
     )
 
 
+async def get_profile_text(user: User):
+    hr_link = "https://praktikum.notion.site/random\\-coffee\\-IT\\-5df78a17680a429f80d110dcfdb491d2"
+    user_link = "https://praktikum.notion.site/random\\-coffee\\-IT\\-0dbc947e5ed34871a7b07e750c571a23"
+    return (
+        "Твоя пара на эту неделю:\n"
+        f"Имя: {user.full_name}\n"
+        f"Профессия: {user.profession}\n"
+        f"Телерграм: {user.mention}\n"
+        "Напиши своей паре приветствие и предложи удобные дни и время для созвона."
+        "В разговоре вы можете опираться на этот <a href="
+        + (f'"{hr_link}"' if user.is_hr else f'"{user_link}"')
+        + ">гайд</a>"
+    )
+
+
 @match_router.callback_query(F.data == "start_matching")
-async def start_matching(data: types.CallbackQuery | types.Message, model_user: User):
+async def start_matching(
+    data: types.CallbackQuery | types.Message, model_user: User, bot: Bot
+):
     answer = data.message.edit_text
     manager = Manager()
     if datetime.datetime.now() - model_user.register_date >= datetime.timedelta(
@@ -36,7 +51,7 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
         Pair.delete().where(
             Pair.hr == model_user if model_user.is_hr else Pair.respondent == model_user
         ).execute()
-        logger.info(f"@{model_user.teleg_username} has blocked")
+        logger.info("@%s has blocked", model_user.teleg_username)
         return await answer(
             "Ваш профиль заблокирован т.к. срок жизни аккаунта 3 месяца."
         )
@@ -63,31 +78,19 @@ async def start_matching(data: types.CallbackQuery | types.Message, model_user: 
             "К сожалению прямо сейчас сейчас я не смог подобрать вам пару, "
             "но как только у меня появится кандидат, сразу вам напишу."
         )
-    text = lambda user: (
-        "Твоя пара на эту неделю:\n"
-        f"Имя: {user.full_name}\n"
-        f"Профессия: {user.profession}\n"
-        f"Телерграм: {user.mention}\n"
-        "Напиши своей паре приветствие и предложи удобные дни и время для созвона."
-        "В разговоре вы можете опираться на этот <a href="
-        + (
-            '"https://praktikum.notion.site/random\\-coffee\\-IT\\-5df78a17680a429f80d110dcfdb491d2"'
-            if user.is_hr
-            else '"https://praktikum.notion.site/random\\-coffee\\-IT\\-0dbc947e5ed34871a7b07e750c571a23"'
-        )
-        + ">гайд</a>"
-    )
-    logger.info(f"New pair {model_user} -> {to_user}")
+    logger.info("New pair %s -> %s", model_user, to_user)
     # To current user
-    await answer(text=text(to_user), parse_mode="HTML")
+    await answer(text=await get_profile_text(to_user), parse_mode="HTML")
     # To match user
-    await BOT.send_message(to_user.teleg_id, text(model_user), parse_mode="HTML")
+    await bot.send_message(
+        to_user.teleg_id, await get_profile_text(model_user), parse_mode="HTML"
+    )
 
 
 async def get_match(user: User) -> User:
     if not user.is_active:
         logger.error(
-            f"Unable to find a pair for an inactivate user: {user.teleg_username}"
+            "Unable to find a pair for an inactivate user: %s", user.teleg_username
         )
         return
     manager = Manager()
@@ -122,7 +125,7 @@ async def get_match(user: User) -> User:
 
 
 async def get_feedback(pair: Pair):
-    logger.info(f"pair completed! ({pair})")
+    logger.info("pair completed! (%s)", pair)
     manager = Manager()
     pair.date_complete = datetime.datetime.now()
     pair.complete = True
@@ -161,14 +164,14 @@ async def get_feedback(pair: Pair):
 
 
 @match_router.callback_query(F.data[:19] == "match_not_complite_")
-async def match_not_complite(data: types.CallbackQuery):
+async def match_not_complite(data: types.CallbackQuery, bot: Bot):
     await data.message.delete()
     pair_id = int(data.data[19:])
     manager = Manager()
     pair = await manager.get(Pair, Pair.id == pair_id)
     buttons = [[types.InlineKeyboardButton(text="GO", callback_data="start_matching")]]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
-    await BOT.send_message(
+    await bot.send_message(
         pair.hr.teleg_id,
         text=(
             "Пожалуйста, напиши в телеграм @arr_ink, она поможет :)\n"
@@ -179,14 +182,14 @@ async def match_not_complite(data: types.CallbackQuery):
 
 
 @match_router.callback_query(F.data[:15] == "match_complite_")
-async def match_complite(data: types.CallbackQuery, model_user: User):
+async def match_complite(data: types.CallbackQuery, bot: Bot):
     await data.message.delete()
     pair_id = int(data.data[15:])
     manager = Manager()
     pair = await manager.get(Pair, Pair.id == pair_id)
     buttons = [[types.InlineKeyboardButton(text="GO", callback_data="start_matching")]]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
-    await BOT.send_message(
+    await bot.send_message(
         pair.hr.teleg_id,
         text=(
             "Поделись своими эмоциями в канале communication! "
@@ -197,13 +200,16 @@ async def match_complite(data: types.CallbackQuery, model_user: User):
 
 
 async def pair_send_message(
-    pair: Pair, message_to_hr: dict, message_to_respondent: dict = None
+    pair: Pair,
+    message_to_hr: dict,
+    bot: Bot,
+    message_to_respondent: dict = None,
 ):
     if not message_to_respondent:
         message_to_respondent = message_to_hr
     await asyncio.gather(
-        BOT.send_message(pair.hr.teleg_id, **message_to_hr),
-        BOT.send_message(pair.respondent.teleg_id, **message_to_respondent),
+        bot.send_message(pair.hr.teleg_id, **message_to_hr),
+        bot.send_message(pair.respondent.teleg_id, **message_to_respondent),
     )
 
 
@@ -216,5 +222,7 @@ async def ask_pairs():
             Pair.match_date <= datetime.datetime.now() - datetime.timedelta(days=5),
         )
     )
-    [await get_feedback(non_complite_pair) for non_complite_pair in non_complite_pairs]
+    for non_complite_pair in non_complite_pairs:
+        await get_feedback(non_complite_pair)
+
     logger.info("Asking complite!")

@@ -1,11 +1,10 @@
 import peewee
 import peewee_async
 
-from config import POSTGRES_DB, POSTGRES_PASSWORD, POSTGRES_USER
+from app.config import Config
 
-database = peewee_async.PostgresqlDatabase(
-    POSTGRES_DB, user=POSTGRES_USER, password=POSTGRES_PASSWORD, host="db", port=5432
-)
+
+database = peewee.DatabaseProxy()
 
 
 class Manager(peewee_async.Manager):
@@ -15,3 +14,18 @@ class Manager(peewee_async.Manager):
 class BaseModel(peewee.Model):
     class Meta:
         database = database
+
+
+async def init_db(*, config: Config):
+    from .models import create_tables
+
+    database.initialize(
+        peewee_async.PostgresqlDatabase(
+            config.POSTGRES_DB,
+            user=config.POSTGRES_USER,
+            password=config.POSTGRES_PASSWORD,
+            host="localhost",
+            port=5432,
+        )
+    )
+    create_tables()

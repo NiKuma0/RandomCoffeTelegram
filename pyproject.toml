@@ -5,16 +5,19 @@ description = "Telegram Bot for matching between a hr and some person with profe
 authors = ["Nikuma <ybr811@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+packages = [{include = 'app'}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 aiogram = "^3.0.0b4"
 aioschedule = "^0.5.2"
 peewee-async = "^0.8.0"
+aiopg = "^1.4.0"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^6"
 black = "^22.12.0"
+python-dotenv = "^0.21.1"
 
 [build-system]
 requires = ["poetry-core"]

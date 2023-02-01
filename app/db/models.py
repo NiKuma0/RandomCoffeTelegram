@@ -2,7 +2,7 @@ import datetime
 
 import peewee
 
-from db import BaseModel, database
+from app.db import BaseModel, database
 
 
 class Profession(BaseModel):
@@ -19,7 +19,7 @@ class User(BaseModel):
     first_name = peewee.CharField(null=True)
     last_name = peewee.CharField(null=True)
     _profession = peewee.ForeignKeyField(
-        Profession, backref="users", null=True, on_delete="SET_NULL"
+        Profession, backref="users", null=True, on_delete="SET NULL"
     )
     register_date = peewee.DateTimeField(default=datetime.datetime.now)
     last_matching_date = peewee.DateTimeField(default=datetime.datetime.now)
@@ -64,7 +64,7 @@ class User(BaseModel):
         match value := value.split():
             case first_name, last_name:
                 self.first_name, self.last_name = first_name, last_name
-            case first_name,:
+            case first_name, :
                 self.first_name, self.last_name = first_name, None
 
     @property
@@ -80,7 +80,7 @@ class User(BaseModel):
 
 class Pair(BaseModel):
     id = peewee.AutoField()
-    hr = peewee.ForeignKeyField(User)
+    hr = peewee.ForeignKeyField(User, on_delete='CASCADE')
     respondent = peewee.ForeignKeyField(User, on_delete="CASCADE")
     match_date = peewee.DateField(default=datetime.datetime.now)
     complete = peewee.BooleanField(default=False)
@@ -93,5 +93,5 @@ class Pair(BaseModel):
         return f"{self.hr} to {self.respondent}"
 
 
-def create_tables() -> None:
-    database.create_tables((User, Pair, Profession))
+def create_tables(_database: peewee.Database = database) -> None:
+    _database.create_tables((User, Pair, Profession))

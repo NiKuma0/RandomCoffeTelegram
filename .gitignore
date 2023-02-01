@@ -4,3 +4,5 @@ __pycache__
 app/bot.log
 app/bot.db
 .env
+backup/
+dist/

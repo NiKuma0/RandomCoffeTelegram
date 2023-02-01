@@ -3,10 +3,10 @@ import logging
 from aiogram import types, Router, F
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from config import ADMINS
 
-from db.models import User, Profession
-from db import Manager
+from app.db.models import User, Profession
+from app.db import Manager
+from app.config import Config
 
 
 HR_PASSWORD = "hr_hire"
@@ -59,7 +59,11 @@ async def help_message(message: types.Message, model_user: User):
 
 @auth_router.message(state=Order.waiting_for_password)
 async def check_password(
-    message: types.Message, event_from_user: types.User, state: FSMContext, answer
+    message: types.Message,
+    event_from_user: types.User,
+    state: FSMContext,
+    answer,
+    config: Config,
 ):
     if message.text not in (HR_PASSWORD, STUDENT_PASSWORD):
         return await message.answer("Неверный пароль. Попробуйте снова")
@@ -70,7 +74,7 @@ async def check_password(
         teleg_id=event_from_user.id,
         teleg_username=event_from_user.username or event_from_user.full_name,
         is_hr=message.text == HR_PASSWORD,
-        is_admin=event_from_user.id == ADMINS,
+        is_admin=event_from_user.id == config.ADMINS,
         first_name=event_from_user.first_name,
         last_name=event_from_user.last_name,
     )

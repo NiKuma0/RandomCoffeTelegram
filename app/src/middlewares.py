@@ -1,9 +1,7 @@
 from aiogram import types, Dispatcher
-from peewee_async import Manager
 
-from db.models import User
-from db import Manager
-from config import BOT
+from app.db.models import User
+from app.db import Manager
 
 
 async def get_user_middleware(handler, event, data):
@@ -20,21 +18,12 @@ async def get_user_middleware(handler, event, data):
     return await handler(event, data)
 
 
-async def send_message(chat_id):
-    async def wrapper(*args, **kwargs):
-        return BOT.send_message(chat_id=chat_id, *args, **kwargs)
-
-    return wrapper
-
-
 async def get_answer_func(handler, event: types.Update, data):
     match (update := event.event):
         case types.Message():
             data["answer"] = update.answer
         case types.CallbackQuery():
             data["answer"] = update.message.edit_text
-        case _:
-            data["answer"] = await send_message(data["event_from_user"].id)
     return await handler(event, data)
 
 
