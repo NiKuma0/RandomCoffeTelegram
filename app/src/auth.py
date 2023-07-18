@@ -1,40 +1,30 @@
-import logging
-
 from aiogram import types, Router, F
-from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
+from aiogram.filters import Command
 
 from app.db.models import User, Profession
-from app.db import Manager
 from app.config import Config
+from app.filters import Order
+from app.logger import logger
 
 
 HR_PASSWORD = "hr_hire"
 STUDENT_PASSWORD = "student_hire"
-logger = logging.getLogger(__name__)
 auth_router = Router()
 
 
-class Order(StatesGroup):
-    waiting_for_password = State()
-    about_bot = State()
-    waiting_for_real_name = State()
-    set_profession = State()
-    start = State()
-
-
-@auth_router.message(commands="start")
+@auth_router.message(Command(commands="start"))
 async def start(
     message: types.Message, state: FSMContext, model_user: User | None, answer
 ):
     if model_user is None:
         logger.info("New user join to us %s", message.from_user.username)
-        await message.answer("Введите ваш код:")
-        return await state.set_state(Order.waiting_for_password)
+        await state.set_state(Order.waiting_for_password)
+        return await message.answer("Введите ваш код:")
     await send_profile(model_user, state, answer)
 
 
-@auth_router.message(commands="help")
+@auth_router.message(Command(commands="help"))
 async def help_message(message: types.Message, model_user: User):
     base_text = (
         "Основные команды:\n"
@@ -57,7 +47,7 @@ async def help_message(message: types.Message, model_user: User):
     await message.answer(text)
 
 
-@auth_router.message(state=Order.waiting_for_password)
+@auth_router.message(Order.waiting_for_password)
 async def check_password(
     message: types.Message,
     event_from_user: types.User,
@@ -68,9 +58,7 @@ async def check_password(
     if message.text not in (HR_PASSWORD, STUDENT_PASSWORD):
         return await message.answer("Неверный пароль. Попробуйте снова")
 
-    manager = Manager()
-    model_user = await manager.create(
-        User,
+    model_user = User.create(
         teleg_id=event_from_user.id,
         teleg_username=event_from_user.username or event_from_user.full_name,
         is_hr=message.text == HR_PASSWORD,
@@ -92,27 +80,20 @@ async def check_password(
     )
     await state.set_state(Order.about_bot)
     await answer(
-        text,
-        reply_markup=types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    types.InlineKeyboardButton(
-                        text="Поехали", callback_data="set_profile"
-                    )
-                ]
-            ]
-        ),
+        text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+            types.InlineKeyboardButton(
+                text="Поехали", callback_data="set_profile"
+            )
+        ]]),
     )
 
 
 @auth_router.callback_query(F.data == "set_profile")
-async def ack_about_change_name(data, model_user: User, state: FSMContext, answer):
-    buttons = [
-        [
-            types.InlineKeyboardButton(text="Да", callback_data="yes"),
-            types.InlineKeyboardButton(text="Нет", callback_data="not"),
-        ]
-    ]
+async def ack_about_change_name(_data, model_user: User, state: FSMContext, answer):
+    buttons = [[
+        types.InlineKeyboardButton(text="Да", callback_data="yes"),
+        types.InlineKeyboardButton(text="Нет", callback_data="not"),
+    ]]
     await state.set_state(Order.waiting_for_real_name)
     await answer(
         f"Это ваше настоящее имя: {model_user.full_name}?",
@@ -120,20 +101,24 @@ async def ack_about_change_name(data, model_user: User, state: FSMContext, answe
     )
 
 
-@auth_router.callback_query(state=Order.waiting_for_real_name)
+@auth_router.callback_query(Order.waiting_for_real_name)
 async def answer_about_change_name(
     data: types.CallbackQuery, state: FSMContext, model_user: User, answer
 ):
     if data.data == "not":
-        return await data.message.edit_text("Напишете своё настоящее имя")
-    elif data.data != "yes":
-        return logger.error(f"Unknown data: {data.data}")
+        return await data.message.edit_text("Напишите своё настоящее имя")
+    if data.data != "yes":
+        return logger.error("Unknown data: %s", data.data)
     await change_name(data, state, model_user, answer)
 
 
-@auth_router.message(state=Order.waiting_for_real_name)
+@auth_router.message(Order.waiting_for_real_name)
 async def change_name(message, state: FSMContext, model_user: User, answer):
     if isinstance(message, types.Message):
+        if len(message.text) > User.full_name_max_length():
+            return message.answer(
+                f"В имени не может быть больше {model_user.full_name_max_length} символов."
+            )
         model_user.full_name = message.text
         model_user.save()
     if model_user.is_admin or model_user.is_hr:
@@ -153,7 +138,7 @@ async def get_professions(data: types.CallbackQuery | types.Message, check_data=
     return await data.answer("Укажите профессию:", reply_markup=keyboard)
 
 
-@auth_router.callback_query(F.data[:11] == "profession_", state=Order.set_profession)
+@auth_router.callback_query(F.data[:11] == "profession_", Order.set_profession)
 async def set_profession(data: types.CallbackQuery, model_user: User, state, answer):
     profession_pk = int(data.data[11:])
     model_user.profession = profession_pk
@@ -165,27 +150,25 @@ async def profession_paginator(page=None) -> types.InlineKeyboardMarkup:
     page = page or 1
     count_items = 3
     switch = []
-    manager = Manager()
     query = Profession.select().order_by(Profession.id)
 
     buttons = [
-        [
-            types.InlineKeyboardButton(
-                text=profession.name, callback_data=f"profession_{profession.id}"
-            )
-        ]
-        for profession in await manager.execute(query.paginate(page, count_items))
+        [types.InlineKeyboardButton(
+            text=profession.name, callback_data=f"profession_{profession.id}"
+        )]
+        for profession in query.paginate(page, count_items)
     ]
 
     if page != 1:
         switch.append(
             types.InlineKeyboardButton(text="<", callback_data=f"page_{page - 1}")
         )
-    if page * count_items < await manager.count(query):
+    if page * count_items < query.count():
         switch.append(
             types.InlineKeyboardButton(text=">", callback_data=f"page_{page + 1}")
         )
-    buttons.append(switch) if switch else None
+    if switch:
+        buttons.append(switch)
     return types.InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
@@ -204,7 +187,7 @@ async def send_profile(model_user: User, state: FSMContext, answer):
         else [types.InlineKeyboardButton(text="GO", callback_data="start_matching")],
         [
             types.InlineKeyboardButton(
-                text="Перезаполнить профиль", callback_data="set_profile"
+                text="Изменить профиль", callback_data="set_profile"
             )
         ],
     ]
@@ -213,8 +196,7 @@ async def send_profile(model_user: User, state: FSMContext, answer):
         "Ваш профиль:\n"
         f"Имя: {model_user.full_name}\n"
         f"Профессия: {model_user.profession}\n"
-        f"Телеграм: {model_user.mention}\n"
-        + (
+        f"Телеграм: {model_user.mention}\n" + (
             "Если пока не хотите участвовать нажмите на кнопку ниже"
             if model_user.is_active
             else 'Если вы готовы начать нажмите "GO"'

@@ -1,9 +1,9 @@
 from aiogram import Router
 
-from src.auth import auth_router
-from src.matching import match_router
-from src.middlewares import register_middlewares
-from src.admin import admin_router
+from .auth import auth_router
+from .matching import match_router
+from .middlewares import register_middlewares
+from .admin import admin_router
 
 
 def register_routers(router: Router):

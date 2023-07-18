@@ -1,14 +1,13 @@
 import asyncio
-import logging
 import datetime
 
 from aiogram import Bot, Router, types, F
 
 from app.db.models import User, Pair
-from app.db import Manager
+from app.db import database
+from app.logger import logger
 
 
-logger = logging.getLogger(__name__)
 match_router = Router()
 
 
@@ -23,17 +22,21 @@ async def deactivate_user(data: types.CallbackQuery | types.Message, model_user:
 
 
 async def get_profile_text(user: User):
-    hr_link = "https://praktikum.notion.site/random\\-coffee\\-IT\\-5df78a17680a429f80d110dcfdb491d2"
-    user_link = "https://praktikum.notion.site/random\\-coffee\\-IT\\-0dbc947e5ed34871a7b07e750c571a23"
+    hr_link = (
+        "https://praktikum.notion.site/random\\-coffee\\-IT\\-5df78a17680a429f80d110dcfdb491d2"
+    )
+    user_link = (
+        "https://praktikum.notion.site/random\\-coffee\\-IT\\-0dbc947e5ed34871a7b07e750c571a23"
+    )
     return (
         "Твоя пара на эту неделю:\n"
         f"Имя: {user.full_name}\n"
         f"Профессия: {user.profession}\n"
         f"Телерграм: {user.mention}\n"
         "Напиши своей паре приветствие и предложи удобные дни и время для созвона."
-        "В разговоре вы можете опираться на этот <a href="
-        + (f'"{hr_link}"' if user.is_hr else f'"{user_link}"')
-        + ">гайд</a>"
+        "В разговоре вы можете опираться на этот <a href=" + (
+            f'"{hr_link}"' if user.is_hr else f'"{user_link}"'
+        ) + ">гайд</a>"
     )
 
 
@@ -42,33 +45,20 @@ async def start_matching(
     data: types.CallbackQuery | types.Message, model_user: User, bot: Bot
 ):
     answer = data.message.edit_text
-    manager = Manager()
-    if datetime.datetime.now() - model_user.register_date >= datetime.timedelta(
-        weeks=14
-    ):
-        model_user.is_active = False
-        model_user.save()
-        Pair.delete().where(
-            Pair.hr == model_user if model_user.is_hr else Pair.respondent == model_user
-        ).execute()
-        logger.info("@%s has blocked", model_user.teleg_username)
-        return await answer(
-            "Ваш профиль заблокирован т.к. срок жизни аккаунта 3 месяца."
-        )
-    non_complite_date = await manager.execute(
+    non_complete_date = (
         model_user.pairs.where(Pair.complete == False)
     )
 
-    if non_complite_date:
-        pair: Pair = non_complite_date[0]
-        to_user = pair.respondent if model_user.is_hr else pair.hr
+    if non_complete_date:
+        pair: Pair = non_complete_date[0]
+        to_user: User = pair.respondent if model_user.is_hr else pair.hr
         return await answer(
             f"У вас уже есть не законченная встреча c {to_user.mention}!",
             parse_mode="HTML",
         )
 
     model_user.is_active = True
-    await manager.update(model_user)
+    model_user.save()
     await data.answer("Ищу пару...")
     to_user = await get_match(model_user)
 
@@ -87,49 +77,57 @@ async def start_matching(
     )
 
 
+@database.atomic()
+def _create_pair(user, to_user) -> Pair:
+    if user.is_hr:
+        pair = Pair.create(
+            hr=user, respondent=to_user
+        )
+    else:
+        pair = Pair.create(
+            hr=to_user, respondent=user
+        )
+    user.is_active = to_user.is_active = False
+    user.save()
+    to_user.save()
+    return pair
+
+
+def _get_pair(user):
+    active_users = (
+        User.select()
+        .where(User.is_active == True, User.is_hr == (not user.is_hr))
+        .order_by(User.last_matching_date)
+    )
+    for to_user in active_users:
+        _pair = user.pairs.where((Pair.respondent if user.is_hr else Pair.hr) == to_user)
+        if _pair.exists():
+            continue
+        return to_user
+
+
 async def get_match(user: User) -> User:
     if not user.is_active:
         logger.error(
             "Unable to find a pair for an inactivate user: %s", user.teleg_username
         )
         return
-    manager = Manager()
-    active_users = await manager.execute(
-        User.select()
-        .where(User.is_active == True, User.is_hr == (not user.is_hr))
-        .order_by(User.last_matching_date)
-    )
-    user_pair_field, to_user_pair_field = (
-        (Pair.hr, Pair.respondent) if user.is_hr else (Pair.respondent, Pair.hr)
-    )
-    query = user.pairs
-    to_user: User = None
-    for choice in active_users:
-        _pairs = await manager.execute(query.where(to_user_pair_field == choice))
-        if _pairs:
-            continue
-        to_user = choice
+    to_user = _get_pair(user)
+
     if not to_user:
-        logger.info(f"Pair not defined for the user {user.teleg_username}")
+        logger.info("Pair not defined for the user %s", user.teleg_username)
         return
-    logger.info(f"New pair: {user.teleg_username} -> {to_user.teleg_username}")
-    await manager.create(
-        Pair,
-        **{user_pair_field.column_name: user, to_user_pair_field.column_name: to_user},
-    )
-    user.is_active = False
-    to_user.is_active = False
-    await manager.update(user)
-    await manager.update(to_user)
+
+    new_pair = _create_pair(user, to_user)
+    logger.info("New pair: %s", new_pair)
     return to_user
 
 
 async def get_feedback(pair: Pair):
     logger.info("pair completed! (%s)", pair)
-    manager = Manager()
     pair.date_complete = datetime.datetime.now()
     pair.complete = True
-    await manager.update(pair)
+    pair.save()
     hr_buttons = [
         [
             types.InlineKeyboardButton(
@@ -167,8 +165,7 @@ async def get_feedback(pair: Pair):
 async def match_not_complite(data: types.CallbackQuery, bot: Bot):
     await data.message.delete()
     pair_id = int(data.data[19:])
-    manager = Manager()
-    pair = await manager.get(Pair, Pair.id == pair_id)
+    pair = Pair.get(Pair.id == pair_id)
     buttons = [[types.InlineKeyboardButton(text="GO", callback_data="start_matching")]]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     await bot.send_message(
@@ -185,8 +182,7 @@ async def match_not_complite(data: types.CallbackQuery, bot: Bot):
 async def match_complite(data: types.CallbackQuery, bot: Bot):
     await data.message.delete()
     pair_id = int(data.data[15:])
-    manager = Manager()
-    pair = await manager.get(Pair, Pair.id == pair_id)
+    pair = Pair.get(Pair.id == pair_id)
     buttons = [[types.InlineKeyboardButton(text="GO", callback_data="start_matching")]]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     await bot.send_message(
@@ -203,7 +199,7 @@ async def pair_send_message(
     pair: Pair,
     message_to_hr: dict,
     bot: Bot,
-    message_to_respondent: dict = None,
+    message_to_respondent: dict | None = None,
 ):
     if not message_to_respondent:
         message_to_respondent = message_to_hr
@@ -215,12 +211,9 @@ async def pair_send_message(
 
 async def ask_pairs():
     logger.info("Asking pairs...")
-    manager = Manager()
-    non_complite_pairs = await manager.execute(
-        Pair.select().where(
-            Pair.complete == False,
-            Pair.match_date <= datetime.datetime.now() - datetime.timedelta(days=5),
-        )
+    non_complite_pairs = Pair.select().where(
+        Pair.complete == False,
+        Pair.match_date <= datetime.datetime.now() - datetime.timedelta(days=5),
     )
     for non_complite_pair in non_complite_pairs:
         await get_feedback(non_complite_pair)

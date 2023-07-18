@@ -67,15 +67,23 @@ class User(BaseModel):
             case first_name, :
                 self.first_name, self.last_name = first_name, None
 
+    @classmethod
+    def full_name_max_length(cls):
+        return cls.first_name.max_length + cls.last_name.max_length
+
     @property
     def mention(self):
-        return f'<a href="tg://user?id={self.teleg_id}">{self.teleg_username or self.full_name}</a>'
+        # if self.teleg_username:
+        #     return f'@{self.teleg_username}'
+        return f'<a href="tg://user?id={self.teleg_id}">{self.full_name}</a>'
 
     def __repr__(self) -> str:
-        return f"<{type(self).__name__} @{self.teleg_username}>"
+        return f"<{type(self).__name__} {str(self)}>"
 
     def __str__(self):
-        return f"@{self.teleg_username}"
+        if self.teleg_username:
+            return f"@{self.teleg_username}"
+        return self.full_name
 
 
 class Pair(BaseModel):
@@ -93,5 +101,5 @@ class Pair(BaseModel):
         return f"{self.hr} to {self.respondent}"
 
 
-def create_tables(_database: peewee.Database = database) -> None:
-    _database.create_tables((User, Pair, Profession))
+def create_tables() -> None:
+    database.create_tables((User, Pair, Profession))

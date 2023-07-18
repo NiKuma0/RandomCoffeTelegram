@@ -1,8 +1,7 @@
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 
 TESTING = True
-BOT = None
 
 
 class Config(BaseSettings):

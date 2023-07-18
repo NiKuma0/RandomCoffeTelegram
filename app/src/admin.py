@@ -1,90 +1,59 @@
 import asyncio
-import logging
 
 import aioschedule
 from peewee import DoesNotExist
 from aiogram import types, Router
-from aiogram.filters import BaseFilter, command
+from aiogram.filters import ExceptionTypeFilter
+from aiogram.filters.command import CommandObject, Command
 
 from app.src.matching import ask_pairs, get_feedback
 from app.db.models import User, Pair, Profession
-from app.db import Manager
+from app.filters import AdminFilter
+
 
 admin_router = Router()
-logger = logging.getLogger(__name__)
 
 
-class AdminFilter(BaseFilter):
-    async def __call__(self, message: types.Message, model_user):
-        if not model_user or not model_user.is_admin:
-            await message.answer("У вас недостаточно прав")
-            return False
-        return True
+@admin_router.startup()
+async def startup(router: Router):
+    router.message.filter(AdminFilter())
 
 
-class ErrorFilterUserDoesNotExist(BaseFilter):
-    """
-    Временный класс.
-    Пока commit [Error handlers not working #822] (aiogram) не войдёт в версию PyPi
-    """
-
-    async def __call__(self, message: types.Message, exception):
-        return isinstance(exception, DoesNotExist)
-
-
-admin_router.message.bind_filter(AdminFilter)
-
-
-async def get_user(username: str, async_func_answer_error=None) -> User:
-    error_msg = f"Пользаватель, @{username}, не найден. Возможно он не запускал бот."
-    manager = Manager()
-    try:
-        return await manager.get(User, User.teleg_username == username)
-    except User.DoesNotExist as error:  # noqa
-        if not async_func_answer_error:
-            raise error
-        await async_func_answer_error(error_msg)
-        raise error
-
-
-@admin_router.message(commands="add_admin")
-async def add_admin(message, command: command.CommandObject):
+@admin_router.message(Command(commands="add_admin"))
+async def add_admin(message: types.Message, command: CommandObject):
     if not command.args:
         return await message.answer(
             "Не хватает аттрибутов.\n/add_admin [username нового админа]"
         )
     args = command.args.split()
-    users = await asyncio.gather(*map(get_user, args))
-    for user in users:
-        user.is_admin = True
-        user.save()
+    has_updated = User.update({User.is_admin: True}).where(User.teleg_username in args).execute()
+    if has_updated == 0:
+        return await message.answer("Ни один пользователь не найден!")
+    if has_updated == 1 and len(args) == 1:
+        return await message.answer(f"Пользователь, @{args[0]}, успешно посвящён в администраторы!")
     await message.answer(
-        (
-            f"Пользователь, @{args[0]}, успешно посвящён в администраторы!"
-            if len(command.args) == 1
-            else f'Пользователи успешно посвящаенный в администраторы!\n{" @".join(args)}'
-        )
+        f"{has_updated} пользователей успешно посвящаенный в администраторы!"
     )
 
 
-@admin_router.message(commands="add_profession")
-async def add_profession(message: types.Message, command: command.CommandObject):
-    manager = Manager()
+@admin_router.message(Command(commands="add_profession"))
+async def add_profession(message: types.Message, command: CommandObject):
     if not command.args:
         return await message.answer(
-            "Нехватает атрибутов.\n" "   /add_profession [Название профессии]"
+            "Нехватает атрибутов.\n"
+            "\t/add_profession [Название профессии]"
         )
-    await manager.create(Profession, name=command.args)
+    Profession.create(name=command.args)
     await message.answer("Успешно!")
 
 
-@admin_router.message(commands="ask_pairs")
+@admin_router.message(Command(commands="ask_pairs"))
 async def admin_ask_pairs(message):
     await message.answer("Запустил!")
     await ask_pairs()
 
 
-@admin_router.message(commands="ask_pairs_forever")
+@admin_router.message(Command(commands="ask_pairs_forever"))
 async def admin_ask_pairs_forever(message):
     await message.answer("Запустил!")
     aioschedule.every().day.at("12:00").do(ask_pairs)
@@ -93,52 +62,53 @@ async def admin_ask_pairs_forever(message):
         await asyncio.sleep(1)
 
 
-@admin_router.message(commands="ask_pair")
-async def admin_ask_pair(message: types.Message, command: command.CommandObject):
+@admin_router.message(Command(commands="ask_pair"))
+async def admin_ask_pair(message: types.Message, command: CommandObject):
     if not command.args or len(args := command.args.split()) != 2:
         return await message.answer(
             "Команда принимает только 2 аргумента.\n"
-            "   /ask_pair [hr] [респондент]  # Порядок важен!"
+            "\t/ask_pair [hr] [респондент]  # Порядок важен!"
         )
-    manager = Manager()
-    hr, respondent = await asyncio.gather(*map(get_user, args))
     try:
-        pair = await manager.get(Pair, Pair.hr == hr, Pair.respondent == respondent)
-    except Pair.DoesNotExist:
+        hr, respondent = (
+            User.get(User.teleg_username == args[0]),
+            User.get(User.teleg_username == args[1]),
+        )
+        pair = Pair.get(Pair.hr == hr, Pair.respondent == respondent)
+    except DoesNotExist:
         return await message.answer(
             "Пара не найдена. Проверьте порядок:\n"
-            "   /ask_pair [hr] [респондент]  # Сначала hr потом респондент"
+            "\t/ask_pair [hr] [респондент]  # Сначала hr потом респондент"
         )
     await message.answer("Успешно!")
     await get_feedback(pair)
 
 
-@admin_router.message(commands="admin_reset")
-async def admin_reset(message: types.Message, command: command.CommandObject):
-    if not command.args or len(command.args.split()) != 1:
+@admin_router.message(Command(commands="admin_reset"))
+async def admin_reset(message: types.Message, command: CommandObject):
+    if not command.args or len(command.args.split()) <= 0:
         return await message.answer(
-            "Команда принимает только 1 аргумент.\n" "   /admin_reset [admin_username]"
+            "Не хватает аргументa.\n"
+            "\t/admin_reset [admin_username]"
         )
-    admin = await get_user(command.args)
-    manager = Manager()
-    admin.is_admin = False
-    await manager.update(admin)
-    await message.answer("Успешно!")
+    has_updated = User.update(is_admin=False).where(User.teleg_username << command.args.split())
+    await message.answer(f"Успешно обновлено {has_updated} пользователей")
 
 
-@admin_router.message(commands="change_role")
-async def change_role(message: types.Message, command: command.CommandObject):
+@admin_router.message(Command(commands="change_role"))
+async def change_role(message: types.Message, command: CommandObject):
     if not command.args or len(command.args.split()) != 1:
         return await message.answer(
-            "Команда принимает только 1 аргумент.\n" "   /change_role [username]"
+            "Команда принимает только 1 аргумент.\n"
+            "\t/change_role [username]"
         )
-    user = await get_user(command.args)
-    manager = Manager()
+    user = User.get(User.teleg_username == command.args)
     user.is_hr = not user.is_hr
-    await manager.update(user)
+    user.save()
     await message.answer("Успешно!")
 
 
-@admin_router.errors(ErrorFilterUserDoesNotExist())
-async def user_not_exist(update: types.Update, exception):
-    await update.message.answer("Пользователь не найден")
+@admin_router.errors(ExceptionTypeFilter(DoesNotExist))
+async def user_not_exist(error: types.error_event.ErrorEvent):
+    print(vars(error.exception))
+    await error.update.message.answer("Пользователь не найден")

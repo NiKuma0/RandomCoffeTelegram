@@ -6,3 +6,5 @@ app/bot.db
 .env
 backup/
 dist/
+bot.log
+.vscode
