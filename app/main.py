@@ -1,38 +1,34 @@
-import logging
 import asyncio
 
-from src import register_middlewares, admin_router, match_router, auth_router
-from db.models import create_tables
-from config import BOT, DP
+from aiogram import Dispatcher, Bot
+from aiogram.fsm.storage.memory import MemoryStorage
+
+from app.src import register_middlewares, register_routers
+from app.db import init_db, database
+from app.config import get_config, Config
+from app.logger import logger
 
 
-logger_file_handler = logging.FileHandler('bot.log')
-logger_stream_handler = logging.StreamHandler()
-logger_stream_handler.setLevel(logging.INFO)
-logger_stream_handler.setFormatter(logging.Formatter(
-    '[%(levelname)s %(asctime)s]\n%(message)s', datefmt='"%d/%m %H.%M"',
-))
-logger_file_handler.setLevel(logging.DEBUG)
-logging.basicConfig(
-    datefmt='"%d/%m %H.%M"',
-    format='%(levelname)s:%(name)s:%(asctime)s:%(message)s',
-    level=logging.DEBUG,
-    handlers=(logger_file_handler, logger_stream_handler)
-)
-logger = logging.getLogger()
+def init_bot(config: Config) -> tuple[Dispatcher, Bot]:
+    bot = Bot(config.BOT_TOKEN, parse_mode="HTML")
+    dp = Dispatcher(storage=MemoryStorage())
+
+    @dp.startup()
+    async def _(dispatcher: Dispatcher, config: Config):
+        await init_db(config=config)
+        register_middlewares(dispatcher)
+        register_routers(dispatcher)
+        logger.info('Bot start')
+
+    @dp.shutdown()
+    async def _():
+        database.close()
+        logger.info('Bot Stopped')
+
+    return dp, bot
 
 
-async def main():
-    logger.info('RUN APP')
-    create_tables()
-    logger.info('Created tables')
-    register_middlewares()
-    DP.include_router(auth_router)
-    DP.include_router(admin_router)
-    DP.include_router(match_router)
-    # run_continuously()
-
-
-if __name__ == '__main__':
-    asyncio.run(main())
-    DP.run_polling(BOT)
+def main():
+    config = get_config()
+    dp, bot = init_bot(config)
+    return asyncio.run(dp.start_polling(bot, config=config))

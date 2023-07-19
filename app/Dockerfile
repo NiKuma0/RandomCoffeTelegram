@@ -12,7 +12,7 @@ ENV PYTHONUNBUFFERED 1
 RUN apk update \
     && apk add postgresql-dev gcc python3-dev musl-dev
 
-RUN pip install --upgrade pip
+RUN pip install -U pip
 COPY ./requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
 COPY . .
@@ -47,11 +47,3 @@ USER app
 # ENTRYPOINT ["/home/app/web/entrypoint.prod.sh"]
 
 CMD python main.py
-
-
-# FROM python:alpine3.14
-# WORKDIR /code
-# COPY requirements.txt /code
-# RUN pip install -U pip; pip install -r requirements.txt
-# COPY . .
-# CMD python main.py

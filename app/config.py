@@ -1,17 +1,20 @@
-import threading
-import os
-
-from aiogram import Bot, Dispatcher
-from aiogram.dispatcher.fsm.storage.memory import MemoryStorage
+from pydantic_settings import BaseSettings
 
 
-TESTING = False
-# DB settings
-POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
-POSTGRES_USER = os.getenv('POSTGRES_USER')
-POSTGRES_DB = os.getenv('POSTGRES_DB')
-# Bot settings
-BOT_TOKEN = os.getenv('BOT_TOKEN')
-DP = Dispatcher(MemoryStorage())
-BOT = Bot(BOT_TOKEN, parse_mode='HTML')
-ADMINS = os.getenv('ADMINS')
+TESTING = True
+
+
+class Config(BaseSettings):
+    # DB settings
+    POSTGRES_PASSWORD: str
+    POSTGRES_USER: str
+    POSTGRES_DB: str
+    # Bot settings
+    BOT_TOKEN: str
+    ADMINS: str
+
+
+def get_config(_env_file=None) -> Config:
+    if TESTING:
+        return Config(_env_file=_env_file or ".env")
+    return Config()
